@@ -79,10 +79,14 @@ class Rarbg(ScraperService[RarbgConfig]):
         try:
             return self.scrape(item)
         except Exception as e:
-            if "rate limit" in str(e).lower() or "429" in str(e):
-                logger.debug(
-                    f"TheRARBG rate limit exceeded for item: {item.log_string}"
-                )
+            from requests import HTTPError
+            if isinstance(e, HTTPError) and e.response.status_code == 429:
+                from program.utils.exceptions import RateLimitError
+                retry_after = e.response.headers.get("Retry-After")
+                raise RateLimitError("TheRARBG rate limit exceeded", retry_after=int(retry_after) if retry_after else None)
+            elif "rate limit" in str(e).lower() or "429" in str(e):
+                from program.utils.exceptions import RateLimitError
+                raise RateLimitError("TheRARBG rate limit exceeded")
             else:
                 logger.exception(f"TheRARBG exception thrown: {str(e)}")
         return {}

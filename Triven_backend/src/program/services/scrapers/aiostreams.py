@@ -135,7 +135,10 @@ class AIOStreams(ScraperService[AIOStreamsConfig]):
             return self.scrape(item)
         except HTTPError as http_err:
             if http_err.response.status_code == 429:
-                logger.debug(f"AIOStreams rate limit exceeded for item: {item.log_string}")
+                from program.utils.exceptions import RateLimitError
+                
+                retry_after = http_err.response.headers.get("Retry-After")
+                raise RateLimitError("AIOStreams rate limit exceeded", retry_after=int(retry_after) if retry_after else None)
             else:
                 logger.error(f"AIO HTTP error for {item.log_string}: {http_err!s}")
         except Exception as e:

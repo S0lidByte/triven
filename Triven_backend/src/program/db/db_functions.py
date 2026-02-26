@@ -337,10 +337,10 @@ def run_thread_with_db_item(
     if event:
         with db_session() as session:
             if event.item_id:
-                input_item = get_item_by_id(event.item_id, session=session)
+                from program.media.item import MediaItem as MediaItemModel
+                input_item = session.get(MediaItemModel, event.item_id)
 
                 if input_item:
-                    input_item = session.merge(input_item)
 
                     from program.settings import settings_manager
                     

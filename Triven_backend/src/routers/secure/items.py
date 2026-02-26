@@ -295,12 +295,30 @@ async def get_items(
         query = query.order_by(MediaItem.requested_at.desc())
 
     with db_session() as session:
-        total_items = session.execute(
-            select(func.count()).select_from(query.subquery())
-        ).scalar_one()
+        # Cache the count query for 5 seconds to avoid expensive double round-trips on every page
+        from cachetools import TTLCache
+        
+        if not hasattr(get_items, "_count_cache"):
+            get_items._count_cache = TTLCache(maxsize=1024, ttl=5)
+            
+        cache_key = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        
+        if cache_key in get_items._count_cache:
+            total_items = get_items._count_cache[cache_key]
+        else:
+            total_items = session.execute(
+                select(func.count()).select_from(query.subquery())
+            ).scalar_one()
+            get_items._count_cache[cache_key] = total_items
+
+        from sqlalchemy.orm import with_polymorphic
+
+        query_to_execute = query
+        if extended:
+            query_to_execute = query.options(with_polymorphic(MediaItem, "*"))
 
         items = (
-            session.execute(query.offset((page - 1) * limit).limit(limit))
+            session.execute(query_to_execute.offset((page - 1) * limit).limit(limit))
             .unique()
             .scalars()
             .all()
@@ -399,6 +417,13 @@ async def add_items(
                     logger.debug(f"Item with TMDB ID {id} already exists")
 
         if all_tvdb_ids:
+            import asyncio
+            from program.services.metadata.tvdb import Tvdb
+            
+            # Use a smaller timeout for the validation call
+            tvdb = Tvdb()
+            tvdb.session.timeout = 3
+            
             for id in all_tvdb_ids:
                 # Check if item exists using ORM
                 existing = session.execute(
@@ -406,6 +431,16 @@ async def add_items(
                 ).scalar_one_or_none()
 
                 if not existing:
+                    # Validate the ID asynchronously without blocking the event loop
+                    try:
+                        loop = asyncio.get_event_loop()
+                        valid = await loop.run_in_executor(None, tvdb.get_series, id)
+                        if not valid:
+                            logger.error(f"Failed to add TVDB ID {id}: Not found on TVDB")
+                            continue
+                    except Exception as e:
+                        logger.warning(f"Could not validate TVDB ID {id} (timeout/error format), adding anyway: {e}")
+                        
                     item = MediaItem(
                         {
                             "tvdb_id": id,

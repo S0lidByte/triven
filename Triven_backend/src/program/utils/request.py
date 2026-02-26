@@ -243,24 +243,66 @@ class SmartResponse(requests.Response):
             SimpleNamespace: Parsed XML.
         """
 
-        root = etree.fromstring(xml_string)
+        from io import BytesIO
 
-        def element_to_simplenamespace(element: etree.Element) -> SimpleNamespace:
-            children_as_ns = {
-                str(child.tag): element_to_simplenamespace(child) for child in element
-            }
+        # Use an event-driven parser to prevent loading the entire DOM into memory
+        context = etree.iterparse(BytesIO(xml_string.encode('utf-8')), events=("start", "end"))
+        _, root_elem = next(context)  # Get the root element
+
+        def _build_tree(element: etree.Element) -> SimpleNamespace:
+            children_as_ns = {}
+            # Collect pre-parsed children first if returning from recursion
+            for child in element:
+                children_as_ns[str(child.tag)] = _build_tree(child)
 
             attributes = {key: value for key, value in element.attrib.items()}
-
-            return SimpleNamespace(
+            ns = SimpleNamespace(
                 {
                     **attributes,
                     **children_as_ns,
                 },
                 text=element.text,
             )
+            return ns
 
-        return element_to_simplenamespace(root)
+        # Map to build the namespace tree incrementally
+        stack = []
+        
+        for event, elem in context:
+            if event == "start":
+                stack.append((elem, {}))
+            elif event == "end":
+                elem_tag = str(elem.tag)
+                elem_text = elem.text
+                elem_attrib = {k: v for k, v in elem.attrib.items()}
+                
+                # Pop the current element's tracking state
+                current_elem, current_children = stack.pop() if stack else (elem, {})
+                
+                # Create the namespace for the current element
+                ns = SimpleNamespace(
+                    {
+                        **elem_attrib,
+                        **current_children,
+                    },
+                    text=elem_text,
+                )
+                
+                if stack:
+                    # Attach to parent
+                    parent_elem, parent_children = stack[-1]
+                    parent_children[elem_tag] = ns
+                    
+                # Free memory: clear the Element tree references
+                elem.clear()
+                
+                # Also eliminate empty references from the root node to preceding siblings
+                parent = elem.getparent()
+                if parent is not None:
+                    while elem.getprevious() is not None:
+                        del parent[0]
+
+        return ns if 'ns' in locals() else SimpleNamespace()
 
 
 class SmartSession:

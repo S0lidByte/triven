@@ -49,6 +49,7 @@ class Event:
     run_at: datetime = datetime.now()
     item_state: States | None = None  # Cached state for priority sorting
     overrides: dict[str, Any] | None = None
+    failure_count: int = 0
 
     @property
     def log_message(self) -> str:

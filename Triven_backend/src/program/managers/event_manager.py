@@ -84,7 +84,7 @@ class EventManager:
 
         _executor = ThreadPoolExecutor(
             thread_name_prefix=service_name,
-            max_workers=1,
+            max_workers=5,
         )
 
         self._executors.append(
@@ -117,8 +117,56 @@ class EventManager:
             try:
                 result = future_with_event.future.result()
             except Exception as e:
-                logger.error(f"Error in future for {future_with_event}: {e}")
-                logger.exception(traceback.format_exc())
+                import httpx
+                from sqlalchemy.exc import SQLAlchemyError
+                from program.utils.exceptions import RateLimitError
+                
+                is_transient = isinstance(e, (httpx.TimeoutException, ConnectionError, RateLimitError))
+                
+                if is_transient and future_with_event.event and future_with_event.event.item_id:
+                    event = future_with_event.event
+                    event.failure_count += 1
+                    
+                    if event.failure_count >= 5:
+                        logger.error(f"Item ID {event.item_id} failed 5 times. Marking as Failed.")
+                        from program.db.db_functions import get_item_by_id
+                        from program.db.db import db_session
+                        
+                        with db_session() as session:
+                            item = get_item_by_id(event.item_id, session=session)
+                            if item:
+                                item.store_state(States.Failed)
+                                session.commit()
+                    else:
+                        base_delay = 60  # 1 minute base
+                        
+                        if isinstance(e, RateLimitError) and e.retry_after:
+                            delay = e.retry_after
+                        else:
+                            # Exponential backoff: 1m, 2m, 4m, 8m
+                            delay = base_delay * (2 ** (event.failure_count - 1))
+                            
+                        logger.warning(
+                            f"Transient error for {event.log_message}: {e.__class__.__name__}. "
+                            f"Retry {event.failure_count}/5 in {delay}s."
+                        )
+                        
+                        from datetime import timedelta
+                        retry_event = Event(
+                            emitted_by=event.emitted_by,
+                            item_id=event.item_id,
+                            content_item=event.content_item,
+                            run_at=datetime.now() + timedelta(seconds=delay),
+                            overrides=event.overrides,
+                            failure_count=event.failure_count
+                        )
+                        
+                        # Add directly to queue since the current event is being removed from running
+                        self._queue.append(retry_event)
+                else:
+                    logger.error(f"Error in future for {future_with_event}: {e}")
+                    logger.exception(traceback.format_exc())
+                    
                 return  # finally still runs
 
             if isinstance(result, tuple):
