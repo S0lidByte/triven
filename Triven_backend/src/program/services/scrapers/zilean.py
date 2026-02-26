@@ -92,6 +92,8 @@ class Zilean(ScraperService[ZileanConfig]):
             else:
                 logger.exception(f"Zilean exception thrown: {e}")
 
+        return {}
+
     def _build_query_params(self, item: MediaItem) -> Params:
         """Build the query params for the Zilean API"""
 

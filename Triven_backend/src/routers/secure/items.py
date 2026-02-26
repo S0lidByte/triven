@@ -297,11 +297,14 @@ async def get_items(
     with db_session() as session:
         # Cache the count query for 5 seconds to avoid expensive double round-trips on every page
         from cachetools import TTLCache
+        import hashlib
         
         if not hasattr(get_items, "_count_cache"):
             get_items._count_cache = TTLCache(maxsize=1024, ttl=5)
             
-        cache_key = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        # Use a safe hash of the query string representation as cache key
+        # (literal_binds=True crashes on bound parameter lists)
+        cache_key = hashlib.md5(str(query.whereclause).encode()).hexdigest()
         
         if cache_key in get_items._count_cache:
             total_items = get_items._count_cache[cache_key]
@@ -311,14 +314,8 @@ async def get_items(
             ).scalar_one()
             get_items._count_cache[cache_key] = total_items
 
-        from sqlalchemy.orm import with_polymorphic
-
-        query_to_execute = query
-        if extended:
-            query_to_execute = query.options(with_polymorphic(MediaItem, "*"))
-
         items = (
-            session.execute(query_to_execute.offset((page - 1) * limit).limit(limit))
+            session.execute(query.offset((page - 1) * limit).limit(limit))
             .unique()
             .scalars()
             .all()
