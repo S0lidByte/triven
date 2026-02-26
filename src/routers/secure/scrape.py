@@ -17,6 +17,7 @@ from loguru import logger
 from PTT import parse_title  # pyright: ignore[reportUnknownVariableType]
 from pydantic import BaseModel, Json, RootModel
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import InvalidRequestError
 
 from program.db import db_functions
 from program.db.db import db_session
@@ -573,7 +574,10 @@ def scrape_item(
                     return
                 
                 # Detach item from session to avoid threading issues in scraper
-                session.expunge(item)
+                try:
+                    session.expunge(item)
+                except InvalidRequestError:
+                    pass
                 
                 # Apply custom params to the detached item
                 apply_custom_params(item)

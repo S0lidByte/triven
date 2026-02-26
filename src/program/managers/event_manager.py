@@ -104,24 +104,22 @@ class EventManager:
             service (type): The service class associated with the future.
         """
 
-        if future_with_event.future.cancelled():
-            if future_with_event.event:
-                logger.debug(
-                    f"Future for {future_with_event.event.log_message} was cancelled."
-                )
-            else:
-                logger.debug(f"Future for {future_with_event} was cancelled.")
-            return  # Skip processing if the future was cancelled
-
         try:
-            result = future_with_event.future.result()
+            if future_with_event.future.cancelled():
+                if future_with_event.event:
+                    logger.debug(
+                        f"Future for {future_with_event.event.log_message} was cancelled."
+                    )
+                else:
+                    logger.debug(f"Future for {future_with_event} was cancelled.")
+                return  # finally still runs
 
-            if future_with_event in self._futures:
-                self._futures.remove(future_with_event)
-
-            sse_manager.publish_event(
-                "event_update", json.dumps(self.get_event_updates())
-            )
+            try:
+                result = future_with_event.future.result()
+            except Exception as e:
+                logger.error(f"Error in future for {future_with_event}: {e}")
+                logger.exception(traceback.format_exc())
+                return  # finally still runs
 
             if isinstance(result, tuple):
                 item_id, timestamp = result
@@ -129,19 +127,11 @@ class EventManager:
                 item_id, timestamp = result, datetime.now()
 
             if item_id:
-                if future_with_event.event:
-                    self.remove_event_from_running(future_with_event.event)
-
-                    logger.debug(
-                        f"Removed {future_with_event.event.log_message} from running events."
-                    )
-
                 if future_with_event.cancellation_event.is_set():
                     logger.debug(
                         f"Future with Item ID: {item_id} was cancelled; discarding results..."
                     )
-
-                    return
+                    return  # finally still runs
 
                 # Propagate overrides to the new event to maintain setting context across service transitions
                 event_overrides = future_with_event.event.overrides if future_with_event.event else None
@@ -154,19 +144,31 @@ class EventManager:
                         overrides=event_overrides
                     )
                 )
-        except Exception as e:
-            logger.error(f"Error in future for {future_with_event}: {e}")
-            logger.exception(traceback.format_exc())
 
-            # TODO(spoked): Here we should remove it from the running events so it can be retried, right?
-            # self.remove_event_from_queue(future.event)
+            log_message = f"Service {service.__class__.__name__} executed"
 
-        log_message = f"Service {service.__class__.__name__} executed"
+            if future_with_event.event:
+                log_message += f" with {future_with_event.event.log_message}"
 
-        if future_with_event.event:
-            log_message += f" with {future_with_event.event.log_message}"
+            logger.debug(log_message)
 
-        logger.debug(log_message)
+        finally:
+            # Always clean up regardless of success, failure, or cancellation.
+            # NOTE: do NOT call remove_event_from_running anywhere else in this method
+            # to avoid a double-removal ValueError.
+            if future_with_event in self._futures:
+                self._futures.remove(future_with_event)
+
+            if future_with_event.event:
+                self.remove_event_from_running(future_with_event.event)
+                logger.debug(
+                    f"Removed {future_with_event.event.log_message} from running events."
+                )
+
+            sse_manager.publish_event(
+                "event_update", json.dumps(self.get_event_updates())
+            )
+
 
     def add_event_to_queue(self, event: Event, log_message: bool = True):
         """
