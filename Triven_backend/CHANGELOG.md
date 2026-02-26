@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/S0lidByte/triven/compare/v1.1.0...v1.1.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* **backend:** resolve 500 on /items endpoint and zilean fallback ([dcdb90b](https://github.com/S0lidByte/triven/commit/dcdb90b047fa43b8be19c9e5f915dbbbc722cc64))
+
 ## [1.1.0](https://github.com/S0lidByte/triven/compare/v1.0.0...v1.1.0) (2026-02-26)
 
 
