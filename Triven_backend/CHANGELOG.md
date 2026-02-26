@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/S0lidByte/triven/compare/v1.0.0...v1.1.0) (2026-02-26)
+
+
+### Features
+
+* **backend:** implement comprehensive audit fixes for performance and stability ([ded391c](https://github.com/S0lidByte/triven/commit/ded391ca90a4ad623bb9e653497f624b8b54ef42))
+
 ## [1.0.0](https://github.com/S0lidByte/triven/compare/v0.23.6...v1.0.0) (2026-02-26)
 
 
