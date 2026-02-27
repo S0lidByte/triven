@@ -414,13 +414,6 @@ async def add_items(
                     logger.debug(f"Item with TMDB ID {id} already exists")
 
         if all_tvdb_ids:
-            import asyncio
-            from program.services.metadata.tvdb import Tvdb
-            
-            # Use a smaller timeout for the validation call
-            tvdb = Tvdb()
-            tvdb.session.timeout = 3
-            
             for id in all_tvdb_ids:
                 # Check if item exists using ORM
                 existing = session.execute(
@@ -428,16 +421,6 @@ async def add_items(
                 ).scalar_one_or_none()
 
                 if not existing:
-                    # Validate the ID asynchronously without blocking the event loop
-                    try:
-                        loop = asyncio.get_event_loop()
-                        valid = await loop.run_in_executor(None, tvdb.get_series, id)
-                        if not valid:
-                            logger.error(f"Failed to add TVDB ID {id}: Not found on TVDB")
-                            continue
-                    except Exception as e:
-                        logger.warning(f"Could not validate TVDB ID {id} (timeout/error format), adding anyway: {e}")
-                        
                     item = MediaItem(
                         {
                             "tvdb_id": id,

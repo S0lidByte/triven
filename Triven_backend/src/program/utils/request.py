@@ -249,24 +249,8 @@ class SmartResponse(requests.Response):
         context = etree.iterparse(BytesIO(xml_string.encode('utf-8')), events=("start", "end"))
         _, root_elem = next(context)  # Get the root element
 
-        def _build_tree(element: etree.Element) -> SimpleNamespace:
-            children_as_ns = {}
-            # Collect pre-parsed children first if returning from recursion
-            for child in element:
-                children_as_ns[str(child.tag)] = _build_tree(child)
-
-            attributes = {key: value for key, value in element.attrib.items()}
-            ns = SimpleNamespace(
-                {
-                    **attributes,
-                    **children_as_ns,
-                },
-                text=element.text,
-            )
-            return ns
-
-        # Map to build the namespace tree incrementally
-        stack = []
+        # Push the root element onto the stack so it collects its children
+        stack = [(root_elem, {})]
         
         for event, elem in context:
             if event == "start":
@@ -296,12 +280,20 @@ class SmartResponse(requests.Response):
                 # Free memory: clear the Element tree references
                 elem.clear()
                 
-                # Also eliminate empty references from the root node to preceding siblings
+                # Also eliminate empty references from preceding siblings
                 parent = elem.getparent()
                 if parent is not None:
                     while elem.getprevious() is not None:
                         del parent[0]
 
+        # Build the root namespace from whatever children were collected
+        if stack:
+            root_elem_ref, root_children = stack[0]
+            root_attrib = {k: v for k, v in root_elem_ref.attrib.items()} if root_elem_ref.attrib else {}
+            return SimpleNamespace(
+                {**root_attrib, **root_children},
+                text=root_elem_ref.text,
+            )
         return ns if 'ns' in locals() else SimpleNamespace()
 
 

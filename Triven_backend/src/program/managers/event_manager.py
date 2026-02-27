@@ -129,11 +129,11 @@ class EventManager:
                     
                     if event.failure_count >= 5:
                         logger.error(f"Item ID {event.item_id} failed 5 times. Marking as Failed.")
-                        from program.db.db_functions import get_item_by_id
+                        from program.media.item import MediaItem as MediaItemModel
                         from program.db.db import db_session
                         
                         with db_session() as session:
-                            item = get_item_by_id(event.item_id, session=session)
+                            item = session.get(MediaItemModel, event.item_id)
                             if item:
                                 item.store_state(States.Failed)
                                 session.commit()
@@ -161,8 +161,8 @@ class EventManager:
                             failure_count=event.failure_count
                         )
                         
-                        # Add directly to queue since the current event is being removed from running
-                        self._queue.append(retry_event)
+                        # Re-queue using the proper API (handles dedup + state caching)
+                        self.add_event_to_queue(retry_event, log_message=False)
                 else:
                     logger.error(f"Error in future for {future_with_event}: {e}")
                     logger.exception(traceback.format_exc())
