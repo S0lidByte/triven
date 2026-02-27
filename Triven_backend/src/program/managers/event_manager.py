@@ -473,14 +473,16 @@ class EventManager:
                     if not ready_events:
                         raise Empty
 
-                    # Define state priority (lower number = higher priority)
+                    # Define state priority (lower number = higher priority).
+                    # Items closest to completion are processed first to avoid
+                    # PartiallyCompleted shows starving Symlinked/Downloaded items.
                     state_priority = dict[States, int](
                         {
                             States.Completed: 0,
-                            States.PartiallyCompleted: 1,
-                            States.Symlinked: 2,
-                            States.Downloaded: 3,
-                            States.Scraped: 4,
+                            States.Symlinked: 1,
+                            States.Downloaded: 2,
+                            States.Scraped: 3,
+                            States.PartiallyCompleted: 4,
                             States.Indexed: 5,
                         }
                     )

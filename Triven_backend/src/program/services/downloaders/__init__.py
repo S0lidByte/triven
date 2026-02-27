@@ -267,6 +267,16 @@ class Downloader(Runner[None, DownloaderBase]):
                 logger.debug(
                     f"Failed to download any streams for {item.log_string} ({item.id})"
                 )
+                # All streams exhausted: fall back to Indexed so the Scraper can
+                # search for new streams instead of looping in the Downloader forever.
+                logger.debug(
+                    f"All streams exhausted for {item.log_string} ({item.id}), resetting to Indexed for re-scrape"
+                )
+                item.streams.clear()
+                item.scraped_at = None
+                item.scraped_times = 1
+                item.store_state(States.Indexed)
+                yield RunnerResult(media_items=[item])
         else:
             # Clear service cooldowns on successful download
             self._service_cooldowns.clear()
