@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.4](https://github.com/S0lidByte/triven/compare/v1.1.3...v1.1.4) (2026-02-27)
+
+
+### Bug Fixes
+
+* **api:** properly return 404 instead of 500 when GET /items/{id} fails ([8fac650](https://github.com/S0lidByte/triven/commit/8fac650ee5d1070a84bed7473899604e183691ae))
+* **retry:** recursively reset scraped_at/scraped_times on child seasons and episodes ([c968ed4](https://github.com/S0lidByte/triven/commit/c968ed4b55bdccfa6583a30b0f2fe1417f2a7f6d))
+
 ## [1.1.3](https://github.com/S0lidByte/triven/compare/v1.1.2...v1.1.3) (2026-02-27)
 
 
