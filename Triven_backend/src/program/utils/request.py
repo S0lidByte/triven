@@ -727,14 +727,42 @@ class SmartSession:
             # Ensure context manager closes underlying response
             r.close = httpx_response.close
         else:
-            # Non-streaming: read content now and release the connection promptly
-            r._content = httpx_response.content or b""
+            # Non-streaming: read content now and release the connection promptly.
+            # Extract ALL needed values before closing/deleting to free httpx's
+            # internal decoder buffers (ByteChunkedDecoder._buffer) which otherwise
+            # hold a second copy of every response body in memory.
+            content = httpx_response.content or b""
+            headers = dict(httpx_response.headers)
+            req_url = str(httpx_response.request.url)
+            reason = httpx_response.reason_phrase
+            encoding = httpx_response.encoding
 
             try:
                 httpx_response.close()
             except Exception:
                 pass
 
+            # Break all references to httpx internals so GC can free decoder buffers
+            del httpx_response
+
+            r._content = content
+
+            try:
+                r.headers.update(headers)
+            except Exception:
+                pass
+
+            r.url = req_url
+            r.reason = reason
+
+            if encoding:
+                r.encoding = encoding
+
+            r.__class__ = SmartResponse
+
+            return cast(SmartResponse, r)
+
+        # Streaming path: extract metadata while httpx_response is still alive
         try:
             r.headers.update(dict(httpx_response.headers))
         except Exception:
