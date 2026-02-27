@@ -117,6 +117,10 @@ class Downloader(Runner[None, DownloaderBase]):
             sorted_streams = sort_streams_by_quality(item.streams)
 
             tried_streams = 0
+            # run_thread_with_db_item uses next() so only the first yield is consumed.
+            # Yielding after 1 stream releases the thread quickly and re-queues the item.
+            # Blacklisted streams are skipped on the next invocation.
+            MAX_STREAMS_PER_RUN = 1
 
             for stream in sorted_streams:
                 # Try each available service for this stream before blacklisting
@@ -242,8 +246,11 @@ class Downloader(Runner[None, DownloaderBase]):
 
                 tried_streams += 1
 
-                if tried_streams >= 3:
+                if tried_streams >= MAX_STREAMS_PER_RUN:
+                    # Yield early: releases the thread and re-queues the item.
+                    # The next Downloader run will skip blacklisted streams and try the next one.
                     yield RunnerResult(media_items=[item])
+                    return
 
         except Exception as e:
             logger.error(

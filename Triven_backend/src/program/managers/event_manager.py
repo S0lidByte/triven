@@ -84,7 +84,7 @@ class EventManager:
 
         _executor = ThreadPoolExecutor(
             thread_name_prefix=service_name,
-            max_workers=5,
+            max_workers=10,
         )
 
         self._executors.append(
