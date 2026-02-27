@@ -338,7 +338,15 @@ def run_thread_with_db_item(
         with db_session() as session:
             if event.item_id:
                 from program.media.item import MediaItem as MediaItemModel
+
+                _svc = service.__class__.__name__
+                _t0 = time.monotonic()
+                logger.debug(f"[TRACE] {_svc} item={event.item_id}: session.get START")
+
                 input_item = session.get(MediaItemModel, event.item_id)
+
+                _t1 = time.monotonic()
+                logger.debug(f"[TRACE] {_svc} item={event.item_id}: session.get END ({_t1 - _t0:.2f}s) found={input_item is not None}")
 
                 if input_item:
 
@@ -346,13 +354,19 @@ def run_thread_with_db_item(
                     
                     # Execute service within the settings context if overrides exist
                     overrides = event.overrides or {}
+                    logger.debug(f"[TRACE] {_svc} item={event.item_id}: next(fn()) START")
+                    _t2 = time.monotonic()
+
                     with settings_manager.override(**overrides):
                         runner_result = next(fn(input_item), None)
+
+                    _t3 = time.monotonic()
+                    logger.debug(f"[TRACE] {_svc} item={event.item_id}: next(fn()) END ({_t3 - _t2:.2f}s) result={runner_result is not None}")
 
                     if runner_result:
                         if len(runner_result.media_items) > 1:
                             logger.warning(
-                                f"Service {service.__class__.__name__} emitted multiple items for input item {input_item}, only the first will be processed."
+                                f"Service {_svc} emitted multiple items for input item {input_item}, only the first will be processed."
                             )
 
                         item = runner_result.media_items[0]
@@ -367,7 +381,11 @@ def run_thread_with_db_item(
                             else:
                                 item.store_state()
 
+                            logger.debug(f"[TRACE] {_svc} item={event.item_id}: session.commit START")
+                            _t4 = time.monotonic()
                             session.commit()
+                            _t5 = time.monotonic()
+                            logger.debug(f"[TRACE] {_svc} item={event.item_id}: session.commit END ({_t5 - _t4:.2f}s)")
 
                         if run_at:
                             return (item.id, run_at)
