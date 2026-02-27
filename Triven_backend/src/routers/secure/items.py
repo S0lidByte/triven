@@ -691,6 +691,20 @@ async def retry_items(
 
     parsed_ids = handle_ids(payload.ids)
 
+    def _reset_scrape_state(i: MediaItem) -> None:
+        """Reset scraping cooldown on item and all non-completed children recursively."""
+        i.scraped_at = None
+        i.scraped_times = 1
+        if isinstance(i, Show):
+            for season in i.seasons:
+                if season.last_state != States.Completed:
+                    _reset_scrape_state(season)
+        elif isinstance(i, Season):
+            for episode in i.episodes:
+                if episode.last_state != States.Completed:
+                    episode.scraped_at = None
+                    episode.scraped_times = 1
+
     with db_session() as session:
         for id in parsed_ids:
             try:
@@ -700,8 +714,7 @@ async def retry_items(
                 if item:
 
                     def mutation(i: MediaItem, s: Session):
-                        i.scraped_at = None
-                        i.scraped_times = 1
+                        _reset_scrape_state(i)
 
                     apply_item_mutation(
                         program=di[Program],
