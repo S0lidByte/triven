@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.5](https://github.com/S0lidByte/triven/compare/v1.1.4...v1.1.5) (2026-02-27)
+
+
+### Bug Fixes
+
+* **debug:** import time for trace logs ([4791e6a](https://github.com/S0lidByte/triven/commit/4791e6ab29718f33a48f081e7ec36372b3b663e7))
+* **downloader:** fall back to Indexed when all streams exhausted ([9ab0b8a](https://github.com/S0lidByte/triven/commit/9ab0b8a107b2103722e23c8f248aeafffc956613))
+* **memory:** free httpx decoder buffers and revert thread pool to 5 ([f378bf7](https://github.com/S0lidByte/triven/commit/f378bf70fbcb85f84a05acec7eff476242eb80d3))
+* **queue:** correct priority order to prevent starvation ([9ab0b8a](https://github.com/S0lidByte/triven/commit/9ab0b8a107b2103722e23c8f248aeafffc956613))
+* **retry:** reset failed_attempts and Failed state on child episodes ([22902b7](https://github.com/S0lidByte/triven/commit/22902b7e718baeb2299fb886b8fbfd37259088e0))
+
+
+### Performance Improvements
+
+* **downloader:** increase thread pool to 10 and limit to 1 stream per run ([94d9357](https://github.com/S0lidByte/triven/commit/94d935799757d35e7406f9853f755de440fbf9d3))
+
 ## [1.1.4](https://github.com/S0lidByte/triven/compare/v1.1.3...v1.1.4) (2026-02-27)
 
 
