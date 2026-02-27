@@ -389,6 +389,7 @@ async def add_items(
     )
 
     added_count = 0
+    failed_ids = []
     items = list[MediaItem]()
 
     with db_session() as session:
@@ -414,6 +415,15 @@ async def add_items(
                     logger.debug(f"Item with TMDB ID {id} already exists")
 
         if all_tvdb_ids:
+            import asyncio
+            from program.apis.tvdb_api import TVDBApi
+            
+            try:
+                tvdb_api = di[TVDBApi]
+            except Exception:
+                tvdb_api = None
+                logger.warning("TVDBApi not available via DI, skipping TVDB validation")
+            
             for id in all_tvdb_ids:
                 # Check if item exists using ORM
                 existing = session.execute(
@@ -421,6 +431,18 @@ async def add_items(
                 ).scalar_one_or_none()
 
                 if not existing:
+                    # Validate the TVDB ID before enqueuing
+                    if tvdb_api:
+                        try:
+                            loop = asyncio.get_event_loop()
+                            valid = await loop.run_in_executor(None, tvdb_api.get_series, id)
+                            if not valid:
+                                logger.warning(f"TVDB ID {id} not found (404), skipping")
+                                failed_ids.append(id)
+                                continue
+                        except Exception as e:
+                            logger.warning(f"Could not validate TVDB ID {id}: {e}. Adding anyway.")
+                    
                     item = MediaItem(
                         {
                             "tvdb_id": id,
@@ -438,6 +460,8 @@ async def add_items(
                 di[Program].em.add_item(item)
                 added_count += 1
 
+    if failed_ids:
+        return MessageResponse(message=f"Added {added_count} item(s). {len(failed_ids)} TVDB ID(s) not found: {', '.join(failed_ids)}")
     return MessageResponse(message=f"Added {added_count} item(s) to the queue")
 
 
