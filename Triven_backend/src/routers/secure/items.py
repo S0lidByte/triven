@@ -522,6 +522,8 @@ async def get_item(
                 return item.to_extended_dict()
 
             return item.to_dict()
+        except HTTPException:
+            raise
         except Exception as e:
             # Handle multiple results
             if "Multiple rows were found when one or none was required" in str(e):
