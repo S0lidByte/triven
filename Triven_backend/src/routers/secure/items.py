@@ -692,18 +692,30 @@ async def retry_items(
     parsed_ids = handle_ids(payload.ids)
 
     def _reset_scrape_state(i: MediaItem) -> None:
-        """Reset scraping cooldown on item and all non-completed children recursively."""
+        """Reset all scraping blockers on item and all non-completed children recursively.
+
+        Clears:
+        - scraped_at / scraped_times (cooldown timer)
+        - failed_attempts (unblocks should_submit check)
+        - last_state: Failed → Indexed (unblocks state_transition early-exit)
+        """
         i.scraped_at = None
         i.scraped_times = 1
+        i.failed_attempts = 0
+        if i.last_state == States.Failed:
+            i.store_state(States.Indexed)
         if isinstance(i, Show):
             for season in i.seasons:
-                if season.last_state != States.Completed:
+                if season.last_state not in (States.Completed, States.Unreleased):
                     _reset_scrape_state(season)
         elif isinstance(i, Season):
             for episode in i.episodes:
-                if episode.last_state != States.Completed:
+                if episode.last_state not in (States.Completed, States.Unreleased):
                     episode.scraped_at = None
                     episode.scraped_times = 1
+                    episode.failed_attempts = 0
+                    if episode.last_state == States.Failed:
+                        episode.store_state(States.Indexed)
 
     with db_session() as session:
         for id in parsed_ids:
