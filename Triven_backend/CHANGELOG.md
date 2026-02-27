@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/S0lidByte/triven/compare/v1.1.2...v1.1.3) (2026-02-27)
+
+
+### Bug Fixes
+
+* **items:** validate TVDB IDs before enqueuing, surface 404s to frontend ([a26547a](https://github.com/S0lidByte/triven/commit/a26547ad8931ac2247e1c2f7ca437d02a3fd7f5f))
+
 ## [1.1.2](https://github.com/S0lidByte/triven/compare/v1.1.1...v1.1.2) (2026-02-27)
 
 
