@@ -85,7 +85,7 @@ def process_event(
                 if processed_event.related_media_items:
                     items_to_submit += processed_event.related_media_items
 
-    elif existing_item and existing_item.last_state == States.Indexed:
+    elif existing_item and existing_item.last_state in [States.Indexed, States.Unknown]:
         next_service = services.scraping
 
         if emitted_by != services.scraping and (

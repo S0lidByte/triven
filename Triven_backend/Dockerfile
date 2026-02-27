@@ -41,6 +41,11 @@ COPY --from=builder /app/.venv /riven/.venv
 # Grant the necessary capabilities to the Python binary
 RUN setcap cap_sys_admin+ep /usr/local/bin/python3.13
 
+# Fix permissions so non-root users (like PUID 1000) can execute python and read packages
+RUN chmod -R 755 /usr/local/bin/python3.13 && \
+    chmod -R 755 /riven/.venv && \
+    chown -R 1000:1000 /riven
+
 # Activate the virtual environment by adding it to the PATH
 ENV PATH="/riven/.venv/bin:$PATH"
 

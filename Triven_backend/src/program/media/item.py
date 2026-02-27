@@ -406,18 +406,15 @@ class MediaItem(MappedAsDataclass, Base, kw_only=True):
     def is_scraped(self) -> bool:
         """Check if the item has been scraped."""
 
-        session = object_session(self)
+        try:
+            return len(self.streams) > 0 and any(
+                stream not in self.blacklisted_streams for stream in self.streams
+            )
+        except DetachedInstanceError:
+            return False
+        except Exception:
+            return False
 
-        if session and session.is_active:
-            try:
-                session.refresh(self, attribute_names=["blacklisted_streams"])
-                return len(self.streams) > 0 and any(
-                    stream not in self.blacklisted_streams for stream in self.streams
-                )
-            except:
-                pass
-
-        return False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert item to dictionary (API response)"""
