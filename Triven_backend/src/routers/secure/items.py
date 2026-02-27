@@ -691,31 +691,41 @@ async def retry_items(
 
     parsed_ids = handle_ids(payload.ids)
 
+    _SKIP_RESET_STATES = frozenset({
+        States.Completed, States.Unreleased,
+        States.Downloaded, States.Symlinked,
+        States.Paused,
+    })
+
     def _reset_scrape_state(i: MediaItem) -> None:
-        """Reset all scraping blockers on item and all non-completed children recursively.
+        """Reset all scraping blockers on item and eligible children recursively.
+
+        Skips items in Completed, Unreleased, Downloaded, Symlinked, or Paused
+        states — those either have files on disk (require full _reset()) or are
+        deliberately paused by the user.
 
         Clears:
-        - scraped_at / scraped_times (cooldown timer)
-        - failed_attempts (unblocks should_submit check)
-        - last_state: Failed → Indexed (unblocks state_transition early-exit)
+        - scraped_at / scraped_times / failed_attempts (cooldown + should_submit)
+        - streams / blacklisted_streams / active_stream (forces re-scrape)
+        - last_state → Indexed (routes through scraper in state_transition)
         """
+        if i.last_state in _SKIP_RESET_STATES:
+            return
+
         i.scraped_at = None
         i.scraped_times = 1
         i.failed_attempts = 0
-        if i.last_state == States.Failed:
-            i.store_state(States.Indexed)
+        i.streams.clear()
+        i.blacklisted_streams.clear()
+        i.active_stream = None
+        i.store_state(States.Indexed)
+
         if isinstance(i, Show):
             for season in i.seasons:
-                if season.last_state not in (States.Completed, States.Unreleased):
-                    _reset_scrape_state(season)
+                _reset_scrape_state(season)
         elif isinstance(i, Season):
             for episode in i.episodes:
-                if episode.last_state not in (States.Completed, States.Unreleased):
-                    episode.scraped_at = None
-                    episode.scraped_times = 1
-                    episode.failed_attempts = 0
-                    if episode.last_state == States.Failed:
-                        episode.store_state(States.Indexed)
+                _reset_scrape_state(episode)
 
     with db_session() as session:
         for id in parsed_ids:

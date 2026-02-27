@@ -200,11 +200,15 @@ class PlexAPI:
     def get_items_from_watchlist(self) -> list[dict[str, str | None]]:
         """Fetch media from Plex watchlist"""
 
+        # Re-create account each cycle to free the old MyPlexAccount and its
+        # _data ElementTree Element, preventing memory accumulation.
+        self.validate_account()
+
         if not self.account:
             raise PlexAPIError("Plex account not authenticated")
 
         items = cast(list[Movie | Show], self.account.watchlist())
-        watchlist_items = list[dict[str, str | None]]()
+        watchlist_items = []
 
         for item in items:
             try:
@@ -269,6 +273,10 @@ class PlexAPI:
                 logger.error(
                     f"An unexpected error occurred while fetching Plex watchlist item {item.title}: {e}"
                 )
+
+        # Precautionary: break local reference so exception tracebacks
+        # don't retain the Movie/Show objects and their _data Elements.
+        del items
 
         return watchlist_items
 
