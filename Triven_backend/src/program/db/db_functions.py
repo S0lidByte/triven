@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import os
+import time
 
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
