@@ -279,6 +279,12 @@ def create_calendar(
     start = start_date if start_date else datetime.now() - timedelta(days=30)
     end = end_date if end_date else datetime.now() + timedelta(days=30)
 
+    # Ensure start and end are offset-naive for safe comparison against DB naive dates
+    if start.tzinfo is not None:
+        start = start.replace(tzinfo=None)
+    if end.tzinfo is not None:
+        end = end.replace(tzinfo=None)
+
     with _maybe_session(session) as (s, _owns):
         result = s.execute(
             select(MediaItem)
