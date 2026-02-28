@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/S0lidByte/triven/compare/v1.1.5...v1.2.0) (2026-02-28)
+
+### Features
+
+- **versioning:** synchronize root repository version with legacy nested state
+
 ## [1.1.5](https://github.com/S0lidByte/triven/compare/v1.1.4...v1.1.5) (2026-02-27)
 
 
