@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, Any
 from program.utils.logging import logger
 from sqlalchemy import func, inspect, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, joinedload, load_only
+from sqlalchemy import cast, Date
 
 from program.media.state import States
 from program.core.runner import MediaItemGenerator
@@ -271,6 +272,13 @@ def create_calendar(
     """
     Create a calendar of all upcoming/ongoing items in the library.
     Returns a dict keyed by item.id with minimal metadata for scheduling.
+
+    V6 optimizations:
+    - Bounded query window (not full-table scan)
+    - or_() + NULLIF for safe JSON date filtering on Shows
+    - O(1) set-based deduplication (child airings supersede Show fallback)
+    - tmdb_id clickability fallback from parent Show
+    - WARNING-level logging for malformed release_data dates
     """
 
     from program.media.item import MediaItem, Season, Show, Episode
@@ -286,6 +294,7 @@ def create_calendar(
         end = end.replace(tzinfo=None)
 
     with _maybe_session(session) as (s, _owns):
+        # Query 1: All MediaItems with aired_at in the bounded window
         result = s.execute(
             select(MediaItem)
             .options(selectinload(Show.seasons).selectinload(Season.episodes))
@@ -297,22 +306,47 @@ def create_calendar(
 
         calendar_items = list(result.scalars().yield_per(500))
 
+        # Query 2: Shows with release_data dates in the bounded window
+        # Use or_() (not |) for readability and linter compatibility
+        # NULLIF guards handle empty strings in JSON fields
+        next_aired_col = cast(
+            func.nullif(Show.release_data["next_aired"].astext, ""),
+            Date,
+        )
+        last_aired_col = cast(
+            func.nullif(Show.release_data["last_aired"].astext, ""),
+            Date,
+        )
+
         shows_result = s.execute(
             select(Show)
-            .options(selectinload(Show.seasons).selectinload(Season.episodes))
-            .where(Show.release_data.is_not(None))
+            .where(
+                Show.release_data.is_not(None),
+                or_(
+                    next_aired_col.between(start, end),
+                    last_aired_col.between(start, end),
+                ),
+            )
             .execution_options(stream_results=True)
         ).unique()
-        
+
         potential_shows = list(shows_result.scalars().yield_per(500))
 
     calendar = dict[int, dict[str, Any]]()
 
     def build_calendar_dict(item: MediaItem) -> dict[str, Any]:
+        tmdb_id = item.tmdb_id
+        # Clickability fallback: use parent Show's tmdb_id if item's own is missing
+        if not tmdb_id:
+            if isinstance(item, Season) and item.parent:
+                tmdb_id = item.parent.tmdb_id
+            elif isinstance(item, Episode) and item.parent and item.parent.parent:
+                tmdb_id = item.parent.parent.tmdb_id
+
         data = {
             "item_id": item.id,
             "tvdb_id": item.tvdb_id,
-            "tmdb_id": item.tmdb_id,
+            "tmdb_id": tmdb_id,
             "show_title": item.top_title,
             "item_type": item.type,
             "aired_at": item.aired_at,
@@ -323,16 +357,26 @@ def create_calendar(
         if isinstance(item, Season):
             data["season"] = item.number
         if isinstance(item, Episode):
-            data["season"] = item.parent.number
+            data["season"] = item.parent.number if item.parent else None
             data["episode"] = item.number
         return data
 
     for item in calendar_items:
         calendar[item.id] = build_calendar_dict(item)
 
-    # 3. Deduplication guard for Shows based on release_data.next_aired / last_aired
+    # O(1) deduplication: collect parent Show IDs from child airings
+    child_show_ids: set[int] = set()
+    for item in calendar_items:
+        if isinstance(item, Season) and item.parent_id:
+            child_show_ids.add(item.parent_id)
+        elif isinstance(item, Episode) and item.parent and item.parent.parent_id:
+            # Defensive: guard against orphaned episodes with no parent chain
+            child_show_ids.add(item.parent.parent_id)
+
+    # Shows with child airings are already represented — skip them.
+    # Only add Show fallback entries when no specific child is present.
     for show in potential_shows:
-        if show.id in calendar:
+        if show.id in calendar or show.id in child_show_ids:
             continue
 
         if not show.release_data:
@@ -348,17 +392,11 @@ def create_calendar(
             try:
                 next_aired_date = datetime.strptime(next_aired_str.split("T")[0], "%Y-%m-%d").replace(tzinfo=None)
             except Exception:
+                logger.warning(f"Calendar: Skipping show id={show.id} — malformed release_data date fields")
                 continue
 
         if start <= next_aired_date <= end:
-            has_child_airing = any(
-                (isinstance(child, Season) and child.parent_id == show.id) or 
-                (isinstance(child, Episode) and child.parent.parent_id == show.id)
-                for child in calendar_items
-            )
-            
-            if not has_child_airing:
-                calendar[show.id] = build_calendar_dict(show)
+            calendar[show.id] = build_calendar_dict(show)
 
     return calendar
 
