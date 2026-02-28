@@ -1,13 +1,11 @@
 {
     "release-type": "python",
-    "versioning": "default",
     "prerelease": false,
+    "versioning": "default",
+    "include-component-in-tag": false,
     "packages": {
         ".": {
-            "release-type": "python",
-            "package-name": "riven",
-            "changelog-path": "CHANGELOG.md"
+            "type": "python"
         }
-    },
-    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
+    }
 }
