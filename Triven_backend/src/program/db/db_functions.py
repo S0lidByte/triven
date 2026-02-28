@@ -13,7 +13,6 @@ from program.utils.logging import logger
 from sqlalchemy import func, inspect, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload, joinedload, load_only
-from sqlalchemy import cast, Date
 
 from program.media.state import States
 from program.core.runner import MediaItemGenerator
@@ -306,27 +305,14 @@ def create_calendar(
 
         calendar_items = list(result.scalars().yield_per(500))
 
-        # Query 2: Shows with release_data dates in the bounded window
-        # Use or_() (not |) for readability and linter compatibility
-        # NULLIF guards handle empty strings in JSON fields
-        next_aired_col = cast(
-            func.nullif(Show.release_data["next_aired"].astext, ""),
-            Date,
-        )
-        last_aired_col = cast(
-            func.nullif(Show.release_data["last_aired"].astext, ""),
-            Date,
-        )
-
+        # Query 2: Shows with release_data that might have upcoming airings
+        # NOTE: release_data is a custom SeriesReleaseDecorator (Pydantic model serialized
+        # as JSON), NOT raw JSONB. SQL-level JSON subscript access (release_data->>'key')
+        # does not work with SQLAlchemy TypeDecorator columns. Date filtering is done
+        # in Python below instead.
         shows_result = s.execute(
             select(Show)
-            .where(
-                Show.release_data.is_not(None),
-                or_(
-                    next_aired_col.between(start, end),
-                    last_aired_col.between(start, end),
-                ),
-            )
+            .where(Show.release_data.is_not(None))
             .execution_options(stream_results=True)
         ).unique()
 
