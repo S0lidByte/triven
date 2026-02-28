@@ -1,5 +1,6 @@
 import platform
 import psutil
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 import requests
@@ -533,11 +534,18 @@ class CalendarResponse(BaseModel):
     operation_id="fetch_calendar",
     response_model=CalendarResponse,
 )
-async def fetch_calendar() -> CalendarResponse:
+async def fetch_calendar(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> CalendarResponse:
     """Fetch the calendar of all the items in the library"""
 
     with db_session() as session:
-        return CalendarResponse(data=db_functions.create_calendar(session))
+        return CalendarResponse(
+            data=db_functions.create_calendar(
+                session, start_date=start_date, end_date=end_date
+            )
+        )
 
 
 class VFSStatsResponse(BaseModel):

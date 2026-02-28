@@ -263,46 +263,96 @@ def retry_library(session: Session | None = None) -> Sequence[int]:
         return ids
 
 
-def create_calendar(session: Session | None = None) -> dict[int, dict[str, Any]]:
+def create_calendar(
+    session: Session | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> dict[int, dict[str, Any]]:
     """
     Create a calendar of all upcoming/ongoing items in the library.
     Returns a dict keyed by item.id with minimal metadata for scheduling.
     """
 
     from program.media.item import MediaItem, Season, Show, Episode
+    from datetime import datetime, timedelta
+
+    start = start_date if start_date else datetime.now() - timedelta(days=30)
+    end = end_date if end_date else datetime.now() + timedelta(days=30)
 
     with _maybe_session(session) as (s, _owns):
         result = s.execute(
             select(MediaItem)
             .options(selectinload(Show.seasons).selectinload(Season.episodes))
             .where(MediaItem.aired_at.is_not(None))
-            .where(MediaItem.aired_at >= datetime.now() - timedelta(days=30))
+            .where(MediaItem.aired_at >= start)
+            .where(MediaItem.aired_at <= end)
             .execution_options(stream_results=True)
         ).unique()
 
+        calendar_items = list(result.scalars().yield_per(500))
+
+        shows_result = s.execute(
+            select(Show)
+            .options(selectinload(Show.seasons).selectinload(Season.episodes))
+            .where(Show.release_data.is_not(None))
+            .execution_options(stream_results=True)
+        ).unique()
+        
+        potential_shows = list(shows_result.scalars().yield_per(500))
+
     calendar = dict[int, dict[str, Any]]()
 
-    for item in result.scalars().yield_per(500):
-        title = item.top_title
-        calendar[item.id] = {
+    def build_calendar_dict(item: MediaItem) -> dict[str, Any]:
+        data = {
             "item_id": item.id,
             "tvdb_id": item.tvdb_id,
             "tmdb_id": item.tmdb_id,
-            "show_title": title,
+            "show_title": item.top_title,
             "item_type": item.type,
             "aired_at": item.aired_at,
             "last_state": item.last_state,
         }
-
         if isinstance(item, Show):
-            calendar[item.id]["release_data"] = item.release_data
-
+            data["release_data"] = item.release_data
         if isinstance(item, Season):
-            calendar[item.id]["season"] = item.number
-
+            data["season"] = item.number
         if isinstance(item, Episode):
-            calendar[item.id]["season"] = item.parent.number
-            calendar[item.id]["episode"] = item.number
+            data["season"] = item.parent.number
+            data["episode"] = item.number
+        return data
+
+    for item in calendar_items:
+        calendar[item.id] = build_calendar_dict(item)
+
+    # 3. Deduplication guard for Shows based on release_data.next_aired / last_aired
+    for show in potential_shows:
+        if show.id in calendar:
+            continue
+
+        if not show.release_data:
+            continue
+
+        next_aired_str = show.release_data.next_aired or show.release_data.last_aired
+        if not next_aired_str:
+            continue
+
+        try:
+            next_aired_date = datetime.fromisoformat(next_aired_str.replace('Z', '+00:00')).replace(tzinfo=None)
+        except Exception:
+            try:
+                next_aired_date = datetime.strptime(next_aired_str.split("T")[0], "%Y-%m-%d").replace(tzinfo=None)
+            except Exception:
+                continue
+
+        if start <= next_aired_date <= end:
+            has_child_airing = any(
+                (isinstance(child, Season) and child.parent_id == show.id) or 
+                (isinstance(child, Episode) and child.parent.parent_id == show.id)
+                for child in calendar_items
+            )
+            
+            if not has_child_airing:
+                calendar[show.id] = build_calendar_dict(show)
 
     return calendar
 
