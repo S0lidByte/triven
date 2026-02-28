@@ -44,5 +44,5 @@ echo "Starting Riven (Backend)..."
 if [ "$PUID" = "0" ]; then
     exec $CMD
 else
-    exec su -m "$USERNAME" -c "$CMD"
+    exec gosu "$USERNAME" $CMD
 fi
