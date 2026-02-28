@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4.1.2
+      with:
+        submodules: false  # Triven_frontend is a gitlink (not a proper submodule); skip to avoid exit code 128
 
     - name: Docker Setup QEMU
       uses: docker/setup-qemu-action@v3
