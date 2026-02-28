@@ -289,7 +289,7 @@ class RivenVFS(pyfuse3.Operations):
             else:
                 timed_out_streams = {
                     stream_key: stream
-                    for stream_key, stream in self._active_streams.items()
+                    for stream_key, stream in list(self._active_streams.items())
                     if stream.is_timed_out
                 }
 
@@ -305,7 +305,8 @@ class RivenVFS(pyfuse3.Operations):
 
                                 await stream.close()
 
-                                self._active_streams.pop(stream_key)
+                                async with self._active_streams_lock:
+                                    self._active_streams.pop(stream_key, None)
                         except Exception:
                             logger.exception("Error during stream timeout check")
                 else:
@@ -727,7 +728,7 @@ class RivenVFS(pyfuse3.Operations):
             profiles = settings_manager.settings.filesystem.library_profiles or {}
             current_profile_hash = hash(
                 frozenset(
-                    (k, hash(frozenset(v.filter_rules.model_dump().items())))
+                    (k, hash(v.filter_rules.model_dump_json()))
                     for k, v in profiles.items()
                 )
             )
@@ -1620,9 +1621,6 @@ class RivenVFS(pyfuse3.Operations):
             path = self._get_path_from_inode(fh)
             entries = self._list_directory_cached(path)
 
-            if not entries:
-                raise pyfuse3.FUSEError(errno.ENOENT)
-
             # Build directory listing
             with self._tree_lock:
                 node = self._inode_to_node.get(fh)
@@ -1704,13 +1702,10 @@ class RivenVFS(pyfuse3.Operations):
                                     for candidate in self._get_nodes_by_original_filename(
                                         node.original_filename
                                     )
-                                    if (
-                                        candidate.inode != original_inode
-                                        and (
-                                            candidate.original_filename
-                                            != node.original_filename
-                                        )
-                                    )
+                                    # _get_nodes_by_original_filename can yield multiple distinct 
+                                    # stream source nodes with the exact same original_filename but 
+                                    # uniquely identified by their inode.
+                                    if candidate.inode != original_inode
                                 ]
 
                                 if new_nodes:
@@ -1834,19 +1829,26 @@ class RivenVFS(pyfuse3.Operations):
                 _, parent_original_filename, language = parts
 
                 # Fetch subtitle content from database (subtitles are small, read once)
-                subtitle_content = await trio.to_thread.run_sync(
-                    lambda: self.vfs_db.get_subtitle_content(
-                        parent_original_filename,
-                        language,
-                    )
-                )
-
+                subtitle_content = handle_info.get("subtitle_content")
                 if subtitle_content is None:
-                    logger.error(
-                        f"Subtitle content not found for {parent_original_filename} ({language})"
+                    subtitle_content = await trio.to_thread.run_sync(
+                        lambda: self.vfs_db.get_subtitle_content(
+                            parent_original_filename,
+                            language,
+                        )
                     )
 
-                    raise pyfuse3.FUSEError(errno.ENOENT)
+                    if subtitle_content is None:
+                        logger.error(
+                            f"Subtitle content not found for {parent_original_filename} ({language})"
+                        )
+
+                        raise pyfuse3.FUSEError(errno.ENOENT)
+
+                    # Cache on the open file handle to prevent querying the DB on every chunk read
+                    # Note: There is no active invalidation. If the subtitle is updated externally
+                    # while streaming, the stream will serve stale content until the file handle closes.
+                    handle_info["subtitle_content"] = subtitle_content
 
                 # Slice subtitle content in thread (could be large)
                 def slice_subtitle():
@@ -1986,7 +1988,8 @@ class RivenVFS(pyfuse3.Operations):
 
                 if path:
                     stream_key = self._stream_key(path, fh)
-                    active_stream = self._active_streams.pop(stream_key, None)
+                    async with self._active_streams_lock:
+                        active_stream = self._active_streams.pop(stream_key, None)
 
                     if active_stream:
                         await active_stream.close()
