@@ -59,8 +59,8 @@ jobs:
     - name: Push Dev Image to repo
       uses: docker/build-push-action@v5
       with:
-        context: ./Triven_backend
-        file: ./Triven_backend/Dockerfile
+        context: ./
+        file: ./Dockerfile
         push: true
         provenance: mode=max
         tags: ${{ steps.docker-metadata.outputs.tags }}
