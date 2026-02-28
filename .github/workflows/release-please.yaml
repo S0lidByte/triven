@@ -12,6 +12,9 @@ permissions:
   repository-projects: read
   actions: read
 
+concurrency:
+  group: release
+
 jobs:
   label-check:
     name: Create release-please PR labels
@@ -33,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [label-check]
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v4.4.0
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

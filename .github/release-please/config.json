@@ -1,4 +1,7 @@
 {
+    "release-type": "python",
+    "versioning": "default",
+    "prerelease": false,
     "packages": {
         ".": {
             "release-type": "python",
