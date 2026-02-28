@@ -1,0 +1,13 @@
+remote: error: GH013: Repository rule violations found for refs/heads/main.        
+remote: Review all repository rules at https://github.com/S0lidByte/triven/rules?ref=refs%2Fheads%2Fmain        
+remote: 
+remote: - Changes must be made through a pull request.        
+remote: 
+remote: - Commits must have verified signatures.        
+remote:   Found 1 violation:        
+remote: 
+remote:   12b4e2307f2790fbd4545c04e25a5e0f2bef9abd        
+remote: 
+To https://github.com/S0lidByte/triven.git
+ ! [remote rejected]   main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/S0lidByte/triven.git'

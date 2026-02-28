@@ -1,0 +1,13 @@
+remote: error: GH013: Repository rule violations found for refs/heads/fix-docker-signals.        
+remote: Review all repository rules at https://github.com/S0lidByte/triven/rules?ref=refs%2Fheads%2Ffix-docker-signals        
+remote: 
+remote: - Cannot create ref due to creations being restricted.        
+remote: 
+remote: - This branch must not contain merge commits.        
+remote:   Found 1 violation:        
+remote: 
+remote:   6a08b6c722c25fdb6532dbdeb2470de70f5b46c5        
+remote: 
+To https://github.com/S0lidByte/triven.git
+ ! [remote rejected]   fix-docker-signals -> fix-docker-signals (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/S0lidByte/triven.git'

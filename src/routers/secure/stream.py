@@ -307,39 +307,42 @@ async def get_hls_segment(
     segment_duration = 12
     start_time = seq * segment_duration
 
-    # Define vf_filter safely to avoid "UnboundLocalError"
-    vf_filter = ""
+    args = [
+        "-analyzeduration", "0",
+        "-probesize", "5000000",
+        "-ss", str(start_time),
+        "-t", str(segment_duration),
+        "-i", url
+    ]
+    
     if resolution:
         if "x" in resolution:
             width, height = resolution.split("x")
-            vf_filter = f'-vf "scale={width}:{height}"'
+            args.extend(["-vf", f"scale={width}:{height}"])
         else:
-            vf_filter = f'-vf "scale=-2:{resolution}"'
+            args.extend(["-vf", f"scale=-2:{resolution}"])
 
-    # --- FIX 2: Simplified FFmpeg Command ---
-    # Removed: -output_ts_offset (It caused the crash)
-    # Added: -muxdelay 0 (Reduces latency/overhead)
-    cmd = (
-        f"ffmpeg -analyzeduration 0 -probesize 5000000 "
-        f'-ss {start_time} -t {segment_duration} -i "{url}" '
-        f"{vf_filter} "
-        "-c:v libx264 -preset ultrafast -crf 23 "
-        # Apply strict formatting only if requested
-        f'{f"-pix_fmt {pix_fmt}" if pix_fmt else ""} '
-        f'{f"-profile:v {video_profile}" if video_profile else ""} '
-        f'{f"-level {level}" if level else ""} '
-        "-c:a aac -b:a 128k "
-        "-muxdelay 0 "  # Important for small chunks
-        "-f mpegts -"
-    )
+    args.extend(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23"])
 
-    # Debugging: Uncomment this line to see the exact command in your terminal
-    # logger.info(f"FFmpeg CMD: {cmd}")
+    if pix_fmt:
+        args.extend(["-pix_fmt", pix_fmt])
+    if video_profile:
+        args.extend(["-profile:v", video_profile])
+    if level:
+        args.extend(["-level", level])
 
-    process = await asyncio.create_subprocess_shell(
-        cmd,
+    args.extend([
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-muxdelay", "0",
+        "-f", "mpegts",
+        "-"
+    ])
+
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", *args,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,  # OR DEVNULL
+        stderr=asyncio.subprocess.PIPE,
     )
 
     async def stream_output():
