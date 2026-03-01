@@ -74,27 +74,40 @@ async def download_user_info() -> DownloaderUserInfoResponse:
     for all active downloader services (Real-Debrid, Debrid-Link, AllDebrid, etc.)
     """
     try:
-        # Get the downloader service from the program
-        services = di[Program].services
+        # Get the downloader service from the program (may not be initialized yet)
+        try:
+            program = di[Program]
+            services = program.services if program else None
+        except ServiceError:
+            return DownloaderUserInfoResponse(services=[])
+        except Exception as e:
+            logger.debug("Downloader user info: program/services not available: %s", e)
+            return DownloaderUserInfoResponse(services=[])
 
-        assert services
+        if not services or not services.downloader or not services.downloader.initialized:
+            return DownloaderUserInfoResponse(services=[])
 
         downloader = services.downloader
-
-        if not downloader or not downloader.initialized:
-            raise HTTPException(
-                status_code=503, detail="No downloader service is initialized"
-            )
+        # Use getattr to avoid AttributeError if initialized_services is missing
+        initialized_services = getattr(downloader, "initialized_services", None) or []
 
         # Get user info from all initialized services
         services_info = list[DownloaderUserInfo]()
 
-        for service in downloader.initialized_services:
+        for service in initialized_services:
             try:
                 user_info = service.get_user_info()
 
                 if user_info:
                     # Convert datetime objects to ISO strings for JSON serialization
+                    premium_expires_at_val: str | None = None
+                    if getattr(user_info, "premium_expires_at", None):
+                        dt = user_info.premium_expires_at
+                        premium_expires_at_val = dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
+                    cooldown_until_val: str | None = None
+                    if getattr(user_info, "cooldown_until", None):
+                        dt = user_info.cooldown_until
+                        cooldown_until_val = dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
                     services_info.append(
                         DownloaderUserInfo(
                             service=user_info.service,
@@ -102,41 +115,35 @@ async def download_user_info() -> DownloaderUserInfoResponse:
                             email=user_info.email,
                             user_id=user_info.user_id,
                             premium_status=user_info.premium_status,
-                            premium_expires_at=(
-                                user_info.premium_expires_at.isoformat()
-                                if user_info.premium_expires_at
-                                else None
-                            ),
+                            premium_expires_at=premium_expires_at_val,
                             premium_days_left=user_info.premium_days_left,
                             points=user_info.points,
                             total_downloaded_bytes=user_info.total_downloaded_bytes,
-                            cooldown_until=(
-                                user_info.cooldown_until.isoformat()
-                                if user_info.cooldown_until
-                                else None
-                            ),
+                            cooldown_until=cooldown_until_val,
                         )
                     )
                 else:
-                    logger.warning(f"Failed to get user info from {service.key}")
+                    logger.warning(
+                        "Failed to get user info from %s",
+                        getattr(service, "key", type(service).__name__),
+                    )
             except Exception as e:
-                logger.error(f"Error getting user info from {service.key}: {e}")
-                # Continue to next service instead of failing completely
+                logger.error(
+                    "Error getting user info from %s: %s",
+                    getattr(service, "key", type(service).__name__),
+                    e,
+                )
                 continue
-
-        if not services_info:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to retrieve user information from any downloader service",
-            )
 
         return DownloaderUserInfoResponse(services=services_info)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting downloader user info: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        err_msg = (str(e).strip() or None) or getattr(type(e), "__name__", None) or "Unknown error"
+        logger.error("Downloader user info failed: %s", err_msg, exc_info=True)
+        # Return 200 with empty list so dashboard still loads; do not 500
+        return DownloaderUserInfoResponse(services=[])
 
 
 @router.post(

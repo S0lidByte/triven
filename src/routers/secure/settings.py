@@ -15,6 +15,8 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+_schema_cache: dict[str, Any] | None = None
+
 
 @router.get(
     "/schema",
@@ -22,9 +24,11 @@ router = APIRouter(
     response_model=dict[str, Any],
 )
 async def get_settings_schema() -> dict[str, Any]:
-    """Get the JSON schema for the settings."""
-
-    return settings_manager.settings.model_json_schema()
+    """Get the JSON schema for the settings. Cached for faster repeated loads."""
+    global _schema_cache
+    if _schema_cache is None:
+        _schema_cache = settings_manager.settings.model_json_schema()
+    return _schema_cache
 
 
 @router.get(
