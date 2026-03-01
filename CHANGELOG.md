@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.6](https://github.com/S0lidByte/triven/compare/v1.4.5...v1.4.6) (2026-03-01)
+
+
+### Bug Fixes
+
+* downloader user info endpoint - defensive handling, no 500, full traceback in logs ([ca97d72](https://github.com/S0lidByte/triven/commit/ca97d72dac5251f0f5b6df729077bc3ab10328ae))
+
 ## [1.4.5](https://github.com/S0lidByte/triven/compare/v1.4.4...v1.4.5) — Triven fork (current)
 
 Current Triven fork release. Only commits after this version will appear in future release notes.
