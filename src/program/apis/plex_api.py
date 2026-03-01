@@ -208,7 +208,7 @@ class PlexAPI:
             raise PlexAPIError("Plex account not authenticated")
 
         items = cast(list[Movie | Show], self.account.watchlist())
-        watchlist_items = []
+        watchlist_items: list[dict[str, str | None]] = []
 
         for item in items:
             try:

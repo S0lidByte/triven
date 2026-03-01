@@ -1630,7 +1630,7 @@ class RivenVFS(pyfuse3.Operations):
 
                 items = [(b".", pyfuse3.InodeT(fh)), (b"..", parent_inode)]
 
-                for entry in entries:
+                for entry in entries or []:
                     name_bytes = entry["name"].encode("utf-8")
 
                     # Get child node from tree

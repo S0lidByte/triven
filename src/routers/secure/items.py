@@ -41,11 +41,16 @@ class SortOrderEnum(str, Enum):
         return "title" if self.value.startswith("title") else "date"
 
 
+from cachetools import TTLCache
+import hashlib
+
 router = APIRouter(
     prefix="/items",
     tags=["items"],
     responses={404: {"description": "Not found"}},
 )
+
+_get_items_count_cache: TTLCache[str, int] = TTLCache(maxsize=1024, ttl=5)
 
 
 def handle_ids(ids: Sequence[str | int]) -> list[int]:
@@ -296,23 +301,17 @@ async def get_items(
 
     with db_session() as session:
         # Cache the count query for 5 seconds to avoid expensive double round-trips on every page
-        from cachetools import TTLCache
-        import hashlib
-        
-        if not hasattr(get_items, "_count_cache"):
-            get_items._count_cache = TTLCache(maxsize=1024, ttl=5)
-            
         # Use a safe hash of the query string representation as cache key
         # (literal_binds=True crashes on bound parameter lists)
         cache_key = hashlib.md5(str(query.whereclause).encode()).hexdigest()
         
-        if cache_key in get_items._count_cache:
-            total_items = get_items._count_cache[cache_key]
+        if cache_key in _get_items_count_cache:
+            total_items = _get_items_count_cache[cache_key]
         else:
-            total_items = session.execute(
+            total_items = int(session.execute(
                 select(func.count()).select_from(query.subquery())
-            ).scalar_one()
-            get_items._count_cache[cache_key] = total_items
+            ).scalar_one())
+            _get_items_count_cache[cache_key] = total_items
 
         items = (
             session.execute(query.offset((page - 1) * limit).limit(limit))
@@ -389,7 +388,7 @@ async def add_items(
     )
 
     added_count = 0
-    failed_ids = []
+    failed_ids: list[str] = []
     items = list[MediaItem]()
 
     with db_session() as session:

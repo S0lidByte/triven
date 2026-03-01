@@ -118,7 +118,6 @@ class EventManager:
                 result = future_with_event.future.result()
             except Exception as e:
                 import httpx
-                from sqlalchemy.exc import SQLAlchemyError
                 from program.utils.exceptions import RateLimitError
                 
                 is_transient = isinstance(e, (httpx.TimeoutException, ConnectionError, RateLimitError))
