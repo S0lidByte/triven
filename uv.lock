@@ -1153,6 +1153,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyfuse3"
+version = "3.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "trio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/1e/0f8f285a65e2e64f2f0c4accce4ee67d9ac66ee9684492a4327e48d68d87/pyfuse3-3.4.0.tar.gz", hash = "sha256:793493f4d5e2b3bc10e13b3421d426a6e2e3365264c24376a50b8cbc69762d39", size = 962992, upload-time = "2024-08-28T21:59:28.939Z" }
+
+[[package]]
 name = "pygments"
 version = "2.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1544,7 +1553,7 @@ dependencies = [
     { name = "psutil" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
-    { name = "pyfuse3" },
+    { name = "pyfuse3", marker = "sys_platform != 'win32'" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "rank-torrent-name" },
@@ -1557,7 +1566,7 @@ dependencies = [
     { name = "starlette" },
     { name = "subliminal" },
     { name = "trio-util" },
-    { name = "uvicorn", extra = ["standard"] }
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.dev-dependencies]
@@ -1582,16 +1591,6 @@ dev = [
 test = [
     { name = "pytest" },
 ]
-
-
-[[package]]
-name = "pyfuse3"
-version = "3.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "trio" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/61/889600f16068d2b9632420a9a997ef2c79bf4d5e2b3bc10e13b3421d426/pyfuse3-3.4.0.tar.gz", hash = "sha256:f4d5e2b3bc10e13b3421d426a6e2e3365264c24376a50b8cbc69762d39", size = 962992, upload-time = "2024-08-28T21:59:28.939Z" }
 
 [package.metadata]
 requires-dist = [
@@ -1620,7 +1619,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=7.1.0,<8" },
     { name = "psycopg2-binary", specifier = ">=2.9.9,<3" },
     { name = "pydantic", specifier = ">=2.12.0,<3" },
-    { name = "pyfuse3", specifier = ">=3.4.0,<4" },
+    { name = "pyfuse3", marker = "sys_platform != 'win32'", specifier = ">=3.4.0,<4" },
     { name = "python-dotenv", specifier = ">=1.0.1,<2" },
     { name = "python-multipart", specifier = ">=0.0.21" },
     { name = "rank-torrent-name", specifier = ">=1.9.3,<2" },
@@ -1633,7 +1632,7 @@ requires-dist = [
     { name = "starlette", specifier = ">=0.40.0,<1.0.0" },
     { name = "subliminal", specifier = ">=2.2.1,<3" },
     { name = "trio-util", specifier = ">=0.8.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.6,<0.42" }
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.6,<0.42" },
 ]
 
 [package.metadata.requires-dev]
