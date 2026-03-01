@@ -6,13 +6,13 @@ import time
 
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from program.utils.logging import logger
 from sqlalchemy import func, inspect, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload, joinedload, load_only
+from sqlalchemy.orm import Session, selectinload
 
 from program.media.state import States
 from program.core.runner import MediaItemGenerator
@@ -329,7 +329,7 @@ def create_calendar(
             elif isinstance(item, Episode) and item.parent and item.parent.parent:
                 tmdb_id = item.parent.parent.tmdb_id
 
-        data = {
+        data: dict[str, Any] = {
             "item_id": item.id,
             "tvdb_id": item.tvdb_id,
             "tmdb_id": tmdb_id,

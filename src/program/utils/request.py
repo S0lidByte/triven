@@ -250,8 +250,9 @@ class SmartResponse(requests.Response):
         _, root_elem = next(context)  # Get the root element
 
         # Push the root element onto the stack so it collects its children
-        stack = [(root_elem, {})]
+        stack: list[tuple[Any, dict[str, Any]]] = [(root_elem, {})]
         
+        ns: SimpleNamespace | None = None
         for event, elem in context:
             if event == "start":
                 stack.append((elem, {}))
@@ -261,7 +262,7 @@ class SmartResponse(requests.Response):
                 elem_attrib = {k: v for k, v in elem.attrib.items()}
                 
                 # Pop the current element's tracking state
-                current_elem, current_children = stack.pop() if stack else (elem, {})
+                _, current_children = stack.pop() if stack else (elem, {})
                 
                 # Create the namespace for the current element
                 ns = SimpleNamespace(
@@ -274,7 +275,7 @@ class SmartResponse(requests.Response):
                 
                 if stack:
                     # Attach to parent
-                    parent_elem, parent_children = stack[-1]
+                    _, parent_children = stack[-1]
                     parent_children[elem_tag] = ns
                     
                 # Free memory: clear the Element tree references
@@ -294,7 +295,7 @@ class SmartResponse(requests.Response):
                 {**root_attrib, **root_children},
                 text=root_elem_ref.text,
             )
-        return ns if 'ns' in locals() else SimpleNamespace()
+        return ns if ns is not None else SimpleNamespace()
 
 
 class SmartSession:
