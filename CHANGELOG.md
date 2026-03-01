@@ -1,7 +1,13 @@
 # Changelog
 
-## [1.2.1](https://github.com/S0lidByte/triven/compare/v1.2.0...v1.2.1) (2026-02-28)
+## [1.4.5](https://github.com/S0lidByte/triven/compare/v1.4.4...v1.4.5) — Triven fork (current)
 
+Current Triven fork release. Only commits after this version will appear in future release notes.
+
+---
+*Changelog entries below are from upstream riven (pre-fork).*
+
+---
 
 ### ⚠ BREAKING CHANGES
 
