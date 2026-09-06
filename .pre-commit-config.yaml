@@ -2,6 +2,11 @@
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
   python: python3.13
+default_stages:
+  - pre-commit
+default_install_hook_types:
+  - pre-commit
+  - pre-push
 repos:
   # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
   - repo: https://github.com/psf/black-pre-commit-mirror
@@ -13,17 +18,14 @@ repos:
         # pre-commit's default_language_version, see
         # https://pre-commit.com/#top_level-default_language_version
         language_version: python3.13
-        entry: /bin/sh ./dev/hooks/black.sh
         require_serial: true
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
       - id: trailing-whitespace
-        entry: /bin/sh ./dev/hooks/trailing_whitespace.sh
         require_serial: true
       - id: end-of-file-fixer
-        entry: /bin/sh ./dev/hooks/end_of_file_fixer.sh
         require_serial: true
       - id: check-yaml
       - id: check-added-large-files
@@ -41,8 +43,15 @@ repos:
     hooks:
       - id: uv-lock
         name: sync uv.lock with pyproject.toml
-        entry: /bin/sh ./dev/hooks/uv_lock.sh
+        entry: uv lock
         language: system
         files: ^(pyproject\.toml|uv\.lock)$
         pass_filenames: false
         require_serial: true
+      - id: verify-before-push
+        name: run the CI-equivalent verification gate
+        entry: uv run python dev/verify.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self, cast
 
 from cachetools import TTLCache
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
@@ -1121,9 +1121,13 @@ def _is_active_stream(item: MediaItem, stream: Stream) -> bool:
     active = item.active_stream
     if active is None:
         return False
-    if active.id == stream.id:
-        return True
-    return active.infohash == stream.infohash
+
+    active_id = cast(int | str | None, active.id)
+    stream_id = cast(int | None, stream.id)
+    if active_id is not None and stream_id is not None:
+        return active_id == stream_id
+
+    return bool(active.infohash) and active.infohash == stream.infohash
 
 
 @router.post(

@@ -9,7 +9,7 @@ from program.media.item import MediaItem
 
 
 class _FakeStream:
-    def __init__(self, infohash: str, stream_id: int):
+    def __init__(self, infohash: str, stream_id: int | None):
         self.infohash = infohash
         self.id = stream_id
 

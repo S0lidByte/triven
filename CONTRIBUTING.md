@@ -122,11 +122,12 @@ uv sync --group dev
 
 ### Pre-commit Hooks
 
-Pre-commit is configured to run formatters and linters before commits.
+Pre-commit is configured to run formatters and linters before commits. Its pre-push hook also runs the same lockfile, Ruff, Pyright, and selected unit-test checks as CI.
 
 ```sh
-uv run pre-commit install
+uv run pre-commit install --install-hooks
 uv run pre-commit run --all-files
+uv run pre-commit run verify-before-push --hook-stage pre-push --all-files
 ```
 ## License
 

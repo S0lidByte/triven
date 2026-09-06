@@ -43,10 +43,9 @@ jobs:
       - name: Ruff
         run: uv run ruff check src
 
-      - uses: jakebailey/pyright-action@v1
-        with:
-          # Pin pyright so Verify does not drift with Pylance latest-release.
-          version: 1.1.400
+      # Must match dev/verify.py so pre-push catches CI diagnostics.
+      - name: Pyright
+        run: uv run --with "pyright==1.1.400" pyright
 
       - name: Pytest (unit)
         run: |
