@@ -22,6 +22,7 @@ DUAL_AUDIO_TITLE = (
     "Dragon Ball Z Resurrection F 2015 1080p BluRay Dual Audio DDP5.1 x264-EDGE2020"
 )
 MULTI_TITLE = "Dragon Ball Z Resurrection F 2015 MULTi TRUEFRENCH 1080p BluRay x264"
+UNTAGGED_MULTI_TITLE = "Dragon Ball Z Resurrection F 2015 MULTi 1080p BluRay x264"
 CORRECT_TITLE = "Dragon Ball Z: Resurrection F"
 
 
@@ -175,7 +176,7 @@ def test_default_rejects_multi_when_english_required():
         )
 
 
-def test_opt_in_allows_multi_for_anime_via_parse_results():
+def test_opt_in_still_rejects_foreign_only_multi_for_anime():
     settings_manager.settings.scraping.anime_allow_multi_audio = True
 
     with settings_manager.override(languages={"required": ["en"]}):
@@ -184,16 +185,34 @@ def test_opt_in_allows_multi_for_anime_via_parse_results():
             {"f" * 40: MULTI_TITLE},
         )
 
+    assert list(streams) == []
+
+
+def test_opt_in_allows_untagged_multi_for_anime_via_parse_results():
+    settings_manager.settings.scraping.anime_allow_multi_audio = True
+
+    with settings_manager.override(
+        languages={"required": ["ja"]},
+        options={"allow_english_in_languages": False},
+    ):
+        streams = parse_results(
+            AnimeItem(),
+            {"f" * 40: UNTAGGED_MULTI_TITLE},
+        )
+
     assert list(streams) == ["f" * 40]
 
 
-def test_opt_in_does_not_allow_multi_for_non_anime():
+def test_opt_in_does_not_allow_untagged_multi_for_non_anime():
     settings_manager.settings.scraping.anime_allow_multi_audio = True
 
-    with settings_manager.override(languages={"required": ["en"]}):
+    with settings_manager.override(
+        languages={"required": ["ja"]},
+        options={"allow_english_in_languages": False},
+    ):
         streams = parse_results(
             NonAnimeItem(),
-            {"g" * 40: MULTI_TITLE},
+            {"g" * 40: UNTAGGED_MULTI_TITLE},
         )
 
     assert list(streams) == []

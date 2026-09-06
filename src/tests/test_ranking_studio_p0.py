@@ -170,6 +170,27 @@ def test_ranking_languages_required_can_reject_multi():
         )
 
 
+def test_ranking_required_language_uses_candidate_intersection():
+    ranking = _balanced_like()
+    ranking["languages"]["required"] = ["pt", "en"]
+    ranking["options"]["allow_english_in_languages"] = False
+
+    matching = _rank(
+        "The Movie 2024 MULTi Portuguese French 1080p WEB-DL",
+        ranking,
+        correct_title="The Movie",
+    )
+    assert matching.fetch is True
+    assert "pt" in matching.data.languages
+
+    with pytest.raises(GarbageTorrent, match="missing_required_language"):
+        _rank(
+            "The Movie 2024 MULTi French German 1080p WEB-DL",
+            ranking,
+            correct_title="The Movie",
+        )
+
+
 def test_invalid_patterns_blocked_before_rtn():
     ranking = _balanced_like()
     ranking["exclude"] = ["(a+)+"]

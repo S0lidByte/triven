@@ -260,15 +260,7 @@ def _title_looks_multi_or_dual_audio(raw_title: str) -> bool:
         "dualaudio",
         "dual.audio",
     )
-    if any(token in lowered for token in tokens):
-        return True
-
-    try:
-        languages = parse(raw_title).languages or []
-    except Exception:
-        return False
-
-    return len({lang.lower() for lang in languages}) >= 2
+    return any(token in lowered for token in tokens)
 
 
 def _should_retry_as_untagged_english(
@@ -277,7 +269,14 @@ def _should_retry_as_untagged_english(
     if "missing_required_language" not in str(error):
         return False
 
-    if not settings.options.get("allow_english_in_languages", True):
+    allow_english = getattr(
+        settings.options,
+        "allow_english_in_languages",
+        getattr(settings.options, "get", lambda k, d=True: d)(
+            "allow_english_in_languages", True
+        ),
+    )
+    if not allow_english:
         return False
 
     if "en" not in set(_normalize_rtn_language_list(settings.languages.required)):
@@ -301,6 +300,15 @@ def _should_retry_as_multi_audio_for_anime(
         return False
     if "missing_required_language" not in str(error):
         return False
+
+    # Never bypass language gating when candidate has explicitly detected
+    # languages that did not match the required languages (C != empty, C ∩ R = empty).
+    try:
+        if parse(raw_title).languages:
+            return False
+    except Exception:
+        return False
+
     return _title_looks_multi_or_dual_audio(raw_title)
 
 

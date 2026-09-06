@@ -82,3 +82,87 @@ def test_parse_results_applies_language_compatibility_to_active_settings():
         )
 
     assert list(streams) == ["c" * 40]
+
+
+def test_rank_with_language_compat_accepts_multi_when_target_language_present():
+    settings = SettingsModel()
+    settings.languages.required = ["por"]
+    _normalize_rtn_language_settings(settings)
+
+    torrent = _rank_with_language_compat(
+        RTN(settings, DefaultRanking()),
+        settings,
+        raw_title="Stargate Continuum 2008 MULTi Portuguese English 1080p WEB",
+        infohash="d" * 40,
+        correct_title="Stargate: Continuum",
+        remove_trash=True,
+        aliases={},
+    )
+
+    assert torrent.fetch is True
+    assert set(torrent.data.languages) == {"pt", "en"}
+
+
+def test_rank_with_language_compat_rejects_multi_when_no_target_language_present():
+    settings = SettingsModel()
+    settings.languages.required = ["por", "eng"]
+    _normalize_rtn_language_settings(settings)
+
+    with pytest.raises(GarbageTorrent, match="missing_required_language"):
+        _rank_with_language_compat(
+            RTN(settings, DefaultRanking()),
+            settings,
+            raw_title="Stargate Continuum 2008 MULTi French German 1080p WEB",
+            infohash="e" * 40,
+            correct_title="Stargate: Continuum",
+            remove_trash=True,
+            aliases={},
+        )
+
+
+def test_rank_with_language_compat_rejects_untagged_when_english_not_required():
+    settings = SettingsModel()
+    settings.languages.required = ["por"]
+    _normalize_rtn_language_settings(settings)
+
+    with pytest.raises(GarbageTorrent, match="missing_required_language"):
+        _rank_with_language_compat(
+            RTN(settings, DefaultRanking()),
+            settings,
+            raw_title="Stargate Continuum 2008 1080p BluRay x264-OFT",
+            infohash="f" * 40,
+            correct_title="Stargate: Continuum",
+            remove_trash=True,
+            aliases={},
+        )
+
+
+def test_rank_with_language_compat_rejects_untagged_when_allow_english_disabled():
+    settings = SettingsModel()
+    settings.languages.required = ["eng"]
+    settings.options.allow_english_in_languages = False
+    _normalize_rtn_language_settings(settings)
+
+    with pytest.raises(GarbageTorrent, match="missing_required_language"):
+        _rank_with_language_compat(
+            RTN(settings, DefaultRanking()),
+            settings,
+            raw_title="Stargate Continuum 2008 1080p BluRay x264-OFT",
+            infohash="g" * 40,
+            correct_title="Stargate: Continuum",
+            remove_trash=True,
+            aliases={},
+        )
+
+
+def test_parse_results_accepts_multi_portuguese_and_rejects_foreign_multi():
+    with settings_manager.override(languages={"required": ["por"]}):
+        streams = parse_results(
+            DummyItem(),
+            {
+                "1" * 40: "Stargate Continuum 2008 MULTi Portuguese English 1080p WEB",
+                "2" * 40: "Stargate Continuum 2008 MULTi French German 1080p WEB",
+            },
+        )
+
+    assert list(streams) == ["1" * 40]
