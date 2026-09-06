@@ -139,6 +139,22 @@ class Updater(Runner[None, BaseUpdater]):
 
         return success
 
+    def empty_trash(self, path: str) -> bool:
+        """Empty trash for initialized media-server sections matching a path."""
+
+        success = False
+
+        for service in self.services.values():
+            if service.initialized:
+                try:
+                    if service.empty_trash(path):
+                        logger.debug(f"Emptied trash for path: {path}")
+                        success = True
+                except Exception as e:
+                    logger.error(f"Failed to empty trash for path {path}: {e}")
+
+        return success
+
     def get_items_to_update(self, item: MediaItem) -> list[MediaItem]:
         """Get the list of files to update for the given item."""
 

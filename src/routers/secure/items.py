@@ -1117,15 +1117,13 @@ async def get_item_streams(
 
 
 def _is_active_stream(item: MediaItem, stream: Stream) -> bool:
-    """Check if stream is active for item using primary stream ID authority with infohash fallback."""
+    """Check active-stream identity, preferring the persisted stream ID."""
     active = item.active_stream
     if active is None:
         return False
-    if active.id is not None and stream.id is not None:
-        return active.id == stream.id
-    return bool(
-        active.infohash and stream.infohash and active.infohash == stream.infohash
-    )
+    if active.id == stream.id:
+        return True
+    return active.infohash == stream.infohash
 
 
 @router.post(
