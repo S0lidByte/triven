@@ -252,7 +252,9 @@ def test_close_is_noop_after_instance_is_fully_unmounted(mock_vfs):
 
     with (
         patch.object(pyfuse3, "trio_token", object(), create=True),
-        patch("program.services.filesystem.vfs.rivenvfs.trio.from_thread.run") as request_unmount,
+        patch(
+            "program.services.filesystem.vfs.rivenvfs.trio.from_thread.run"
+        ) as request_unmount,
         patch.object(mock_vfs, "_is_mountpoint_mounted", return_value=False),
         patch.object(mock_vfs, "_force_unmount_mountpoint") as force_unmount,
     ):

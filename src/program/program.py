@@ -164,7 +164,7 @@ class Program(threading.Thread):
             and changed.issubset(self._RUNTIME_ONLY_TOP_KEYS)
         ):
             logger.debug(
-                "No service rebuild required for settings keys: " f"{sorted(changed)}"
+                f"No service rebuild required for settings keys: {sorted(changed)}"
             )
             return
 
@@ -495,7 +495,10 @@ class Program(threading.Thread):
                     self._log_pipeline_blockers()
                     logged_invalid = True
 
-                if time.monotonic() - last_recovery_attempt >= recovery_interval_seconds:
+                if (
+                    time.monotonic() - last_recovery_attempt
+                    >= recovery_interval_seconds
+                ):
                     last_recovery_attempt = time.monotonic()
                     self._recover_core_services()
 

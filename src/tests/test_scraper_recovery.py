@@ -6,7 +6,9 @@ from program.services.scrapers import Scraping
 
 def test_scraping_reinitialize_retries_only_enabled_unavailable_services():
     unavailable = MagicMock(enabled=True, initialized=False)
-    unavailable._initialize.side_effect = lambda: setattr(unavailable, "initialized", True)
+    unavailable._initialize.side_effect = lambda: setattr(
+        unavailable, "initialized", True
+    )
     disabled = MagicMock(enabled=False, initialized=False)
     healthy = MagicMock(enabled=True, initialized=True)
 
@@ -24,7 +26,9 @@ def test_scraping_reinitialize_retries_only_enabled_unavailable_services():
 
 def test_scraping_reinitialize_recovers_from_no_initial_services():
     unavailable = MagicMock(enabled=True, initialized=False)
-    unavailable._initialize.side_effect = lambda: setattr(unavailable, "initialized", True)
+    unavailable._initialize.side_effect = lambda: setattr(
+        unavailable, "initialized", True
+    )
 
     scraping = Scraping.__new__(Scraping)
     scraping.services = {object: unavailable}

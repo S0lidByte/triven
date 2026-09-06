@@ -14,7 +14,9 @@ import trio
 from program.services.streaming.media_stream import MediaStream
 
 
-def _bare_stream(*, use_proxy: bool = False, http_pool: Any | None = None) -> MediaStream:
+def _bare_stream(
+    *, use_proxy: bool = False, http_pool: Any | None = None
+) -> MediaStream:
     stream = MediaStream.__new__(MediaStream)
     stream._use_proxy_client = use_proxy
     stream._http_pool = http_pool
@@ -184,7 +186,9 @@ def test_injected_pool_timeout_heals_injected_pool_only():
             DebridServiceClosedConnectionException,
         )
 
-        with patch("program.services.streaming.media_stream.heal_on_pool_timeout") as global_heal:
+        with patch(
+            "program.services.streaming.media_stream.heal_on_pool_timeout"
+        ) as global_heal:
             try:
                 async with stream.establish_connection(start=0, end=10):
                     pass
@@ -194,9 +198,10 @@ def test_injected_pool_timeout_heals_injected_pool_only():
 
             global_heal.assert_not_called()
             mock_pool.heal_on_pool_timeout.assert_awaited_once()
-            assert mock_pool.heal_on_pool_timeout.await_args.kwargs[
-                "failed_generation"
-            ] == 7
+            assert (
+                mock_pool.heal_on_pool_timeout.await_args.kwargs["failed_generation"]
+                == 7
+            )
 
     trio.run(_run)
 
@@ -231,7 +236,9 @@ def test_injected_pool_admission_timeout_heals_failed_generation():
             DebridServiceClosedConnectionException,
         )
 
-        with patch("program.services.streaming.media_stream.heal_on_pool_timeout") as global_heal:
+        with patch(
+            "program.services.streaming.media_stream.heal_on_pool_timeout"
+        ) as global_heal:
             try:
                 async with stream.establish_connection(start=0, end=10):
                     pass
@@ -243,8 +250,9 @@ def test_injected_pool_admission_timeout_heals_failed_generation():
             mock_pool.acquire_lease.assert_not_called()
             mock_pool.release_lease.assert_not_called()
             mock_pool.heal_on_pool_timeout.assert_awaited_once()
-            assert mock_pool.heal_on_pool_timeout.await_args.kwargs[
-                "failed_generation"
-            ] == 11
+            assert (
+                mock_pool.heal_on_pool_timeout.await_args.kwargs["failed_generation"]
+                == 11
+            )
 
     trio.run(_run)

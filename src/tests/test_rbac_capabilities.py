@@ -249,9 +249,10 @@ def test_pause_and_unpause_routes_require_playback_operator(route_name: str) -> 
     route_start = source.index(route_name)
     route_end = source.index("async def", route_start)
 
-    assert 'dependencies=[Depends(require_role("playback:operator"))]' in source[
-        route_start:route_end
-    ]
+    assert (
+        'dependencies=[Depends(require_role("playback:operator"))]'
+        in source[route_start:route_end]
+    )
 
 
 def test_playback_operator_allows_pause_and_unpause_authorization() -> None:

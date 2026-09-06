@@ -93,7 +93,9 @@ class Updater(Runner[None, BaseUpdater]):
 
             for vfs_path in all_vfs_paths:
                 # Build absolute path to the file
-                abs_path = os.path.join(self.library_path, vfs_path.lstrip("/")).replace("\\", "/")
+                abs_path = os.path.join(
+                    self.library_path, vfs_path.lstrip("/")
+                ).replace("\\", "/")
                 refresh_path = os.path.dirname(abs_path).replace("\\", "/")
 
                 # Refresh the path in all services (skip if already refreshed)

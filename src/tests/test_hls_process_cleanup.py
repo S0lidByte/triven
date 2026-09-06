@@ -49,7 +49,9 @@ class FakeProcess:
 
 @pytest.fixture
 def media_info():
-    with patch.object(stream, "_get_media_info", return_value=("http://media", "", "test.ts")):
+    with patch.object(
+        stream, "_get_media_info", return_value=("http://media", "", "test.ts")
+    ):
         yield
 
 
@@ -57,7 +59,9 @@ def media_info():
 async def test_hls_normal_completion_reaps_process(media_info):
     process = FakeProcess(FakeStdout([b"segment", b""]))
 
-    with patch.object(stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)):
+    with patch.object(
+        stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)
+    ):
         response = await stream.get_hls_segment(1, 0, video_profile=None)
         chunks = [chunk async for chunk in response.body_iterator]
 
@@ -73,7 +77,9 @@ async def test_hls_cancellation_terminates_and_reaps_process(media_info):
     blocked = asyncio.Event()
     process = FakeProcess(FakeStdout([], blocked=blocked), returncode=None)
 
-    with patch.object(stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)):
+    with patch.object(
+        stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)
+    ):
         response = await stream.get_hls_segment(1, 0, video_profile=None)
         iterator = response.body_iterator
         task = asyncio.create_task(iterator.__anext__())
@@ -94,7 +100,9 @@ async def test_hls_nonzero_exit_is_reaped(media_info):
     process = FakeProcess(FakeStdout([b""]), returncode=1)
     process.stderr.read.return_value = b"ffmpeg failed"
 
-    with patch.object(stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)):
+    with patch.object(
+        stream.asyncio, "create_subprocess_exec", AsyncMock(return_value=process)
+    ):
         response = await stream.get_hls_segment(1, 0, video_profile=None)
         chunks = [chunk async for chunk in response.body_iterator]
 

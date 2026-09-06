@@ -43,7 +43,9 @@ def sanitize_url_for_logs(url: str) -> str:
 
         query = parse_qsl(parsed.query, keep_blank_values=True)
         sanitized = [
-            (key, "[redacted]") if key.lower() in SENSITIVE_URL_QUERY_PARAMS else (key, value)
+            (key, "[redacted]")
+            if key.lower() in SENSITIVE_URL_QUERY_PARAMS
+            else (key, value)
             for key, value in query
         ]
 
@@ -58,4 +60,3 @@ def sanitize_url_for_logs(url: str) -> str:
         )
     except Exception:
         return url
-

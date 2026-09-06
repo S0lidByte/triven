@@ -56,4 +56,3 @@ class ItemLock:
             lock = cls._locks[item_id]
             if lock.locked():
                 lock.release()
-

@@ -248,4 +248,3 @@ def test_rejects_unrelated_franchise_title():
         )
 
     assert bucket_rtn_reason(exc.value) == "title_mismatch"
-

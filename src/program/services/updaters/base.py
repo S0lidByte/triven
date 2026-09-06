@@ -63,3 +63,12 @@ class BaseUpdater(ABC):
         Returns:
             bool: True if refresh was triggered successfully, False otherwise
         """
+
+    def empty_trash(self, path: str) -> bool:
+        """
+        Empty trash for the media server section matching the given path.
+
+        Default implementation is a no-op for updaters that do not support
+        section trash emptying.
+        """
+        return False

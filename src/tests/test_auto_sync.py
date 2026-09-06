@@ -83,14 +83,17 @@ async def test_auto_scrape_triggers_sync_when_seasons_missing():
         mock_db_sess_cm.return_value.__enter__.return_value = mock_session
 
         # Patch the current external-ID lookup used by resolve_media_item.
-        with patch("program.db.db_functions.get_item_by_external_id", return_value=mock_show):
+        with patch(
+            "program.db.db_functions.get_item_by_external_id", return_value=mock_show
+        ):
             with patch("routers.secure.scrape.di") as mock_di:
                 mock_di[Program].em = MagicMock()
                 with patch("program.program.riven.services") as mock_services:
                     mock_services.indexer = mock_indexer
                     # Patch get_ranking_overrides to return a basic model
                     with patch(
-                        "routers.secure.scrape.get_ranking_overrides", return_value=MagicMock()
+                        "routers.secure.scrape.get_ranking_overrides",
+                        return_value=MagicMock(),
                     ):
                         # Execute
                         response = await auto_scrape(request)
@@ -129,7 +132,9 @@ async def test_auto_scrape_concurrency_returns_202():
 
     with patch("routers.secure.scrape.db_session") as mock_db_sess_cm:
         mock_db_sess_cm.return_value.__enter__.return_value = mock_session
-        with patch("program.db.db_functions.get_item_by_external_id", return_value=mock_show):
+        with patch(
+            "program.db.db_functions.get_item_by_external_id", return_value=mock_show
+        ):
             with patch(
                 "routers.secure.scrape.get_ranking_overrides", return_value=MagicMock()
             ):
@@ -159,9 +164,7 @@ async def test_auto_scrape_handles_sync_timeout():
     mock_indexer = MagicMock(spec=IndexerService)
     mock_indexer.tvdb_indexer = mock_tvdb_indexer
 
-    request = AutoScrapeRequest(
-        media_type="tv", tvdb_id="359913", season_numbers=[1]
-    )
+    request = AutoScrapeRequest(media_type="tv", tvdb_id="359913", season_numbers=[1])
 
     mock_session.execute.return_value.scalar_one.return_value = mock_show
     ItemLock.release(mock_show.id)
@@ -171,11 +174,15 @@ async def test_auto_scrape_handles_sync_timeout():
         mock_services.indexer = mock_indexer
         with patch("routers.secure.scrape.db_session") as mock_db_sess_cm:
             mock_db_sess_cm.return_value.__enter__.return_value = mock_session
-            with patch("program.db.db_functions.get_item_by_external_id", return_value=mock_show):
+            with patch(
+                "program.db.db_functions.get_item_by_external_id",
+                return_value=mock_show,
+            ):
                 with patch("routers.secure.scrape.di") as mock_di:
                     mock_di[Program].em = MagicMock()
                     with patch(
-                        "routers.secure.scrape.get_ranking_overrides", return_value=MagicMock()
+                        "routers.secure.scrape.get_ranking_overrides",
+                        return_value=MagicMock(),
                     ):
                         with pytest.raises(HTTPException) as excinfo:
                             await auto_scrape(request)

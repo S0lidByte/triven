@@ -700,4 +700,5 @@ reset = os.getenv("HARD_RESET", None)
 if reset is not None and reset.lower() in ["true", "1"]:
     hard_reset_database()
     import sys
+
     sys.exit(0)

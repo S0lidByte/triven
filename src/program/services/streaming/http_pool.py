@@ -60,7 +60,9 @@ class TrioStreamingHttpPool:
             try:
                 from program.settings import settings_manager
 
-                self._proxy_url: str | None = settings_manager.settings.downloaders.proxy_url
+                self._proxy_url: str | None = (
+                    settings_manager.settings.downloaders.proxy_url
+                )
             except Exception:
                 self._proxy_url = None
         else:
@@ -211,10 +213,7 @@ class TrioStreamingHttpPool:
         Returns True only when this caller performs a recycle.
         """
         async with self._lock:
-            if (
-                failed_generation is not None
-                and self._generation > failed_generation
-            ):
+            if failed_generation is not None and self._generation > failed_generation:
                 return False
 
             if self._heal_in_progress:

@@ -18,7 +18,9 @@ BACKEND_ROOT = Path(__file__).parents[2]
 ENTRYPOINT = BACKEND_ROOT / "entrypoint.sh"
 
 
-def _entrypoint_environment(shim_dir: Path, *, mount_present: bool, timeout: str) -> dict[str, str]:
+def _entrypoint_environment(
+    shim_dir: Path, *, mount_present: bool, timeout: str
+) -> dict[str, str]:
     env = os.environ.copy()
     env.update(
         {
@@ -82,7 +84,9 @@ def test_child_exit_before_mount_propagates_status(tmp_path: Path):
 
 
 def test_mount_timeout_terminates_and_reaps_child(tmp_path: Path):
-    result = _run_entrypoint(tmp_path, "trap 'exit 0' TERM\nwhile :; do sleep 1; done\n", timeout="0")
+    result = _run_entrypoint(
+        tmp_path, "trap 'exit 0' TERM\nwhile :; do sleep 1; done\n", timeout="0"
+    )
 
     assert result.returncode == 1
     assert "Timed out waiting" in result.stdout
@@ -105,15 +109,15 @@ def test_sigterm_forwards_shutdown_and_exits_cleanly(tmp_path: Path):
     shim_dir = tmp_path / "signal-shim"
     shim_dir.mkdir()
     python = shim_dir / "python"
-    python.write_text("#!/bin/sh\ntrap 'exit 0' TERM\nwhile :; do sleep 1; done\n", encoding="utf-8")
+    python.write_text(
+        "#!/bin/sh\ntrap 'exit 0' TERM\nwhile :; do sleep 1; done\n", encoding="utf-8"
+    )
     python.chmod(0o755)
     grep = shim_dir / "grep"
     grep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
     grep.chmod(0o755)
 
-    env = _entrypoint_environment(
-        shim_dir, mount_present=False, timeout="30"
-    )
+    env = _entrypoint_environment(shim_dir, mount_present=False, timeout="30")
     env["RIVEN_PYTHON"] = str(python)
     process = subprocess.Popen(
         ["/bin/sh", str(ENTRYPOINT)],

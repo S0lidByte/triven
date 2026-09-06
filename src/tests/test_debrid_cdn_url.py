@@ -191,7 +191,6 @@ def test_refresh_same_host_new_token_returns_new_url():
         assert cdn.url == same_host
 
 
-
 def test_refresh_different_host_returns_new_url():
     dead = "https://109-4.download.real-debrid.com/d/DEAD/file.mkv"
     live = "https://45.download.real-debrid.com/d/LIVE/file.mkv"
@@ -416,4 +415,3 @@ def test_is_dns_failure_matches_common_messages():
     assert _is_dns_failure(Exception("[Errno -2] Name does not resolve")) is True
     assert _is_dns_failure(Exception("getaddrinfo failed")) is True
     assert _is_dns_failure(Exception("connection refused")) is False
-

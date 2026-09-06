@@ -59,6 +59,9 @@ def test_get_infohash_from_url_logs_redacted_url_and_error(monkeypatch):
 
     assert len(logged_messages) == 1
     message = logged_messages[0]
-    assert sanitize_url_for_logs("https://example.com/download?token=abc123&safe=ok") in message
+    assert (
+        sanitize_url_for_logs("https://example.com/download?token=abc123&safe=ok")
+        in message
+    )
     assert "abc123" not in message
     assert "Failed to get infohash from URL" in message

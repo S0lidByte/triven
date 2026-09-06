@@ -22,7 +22,9 @@ RankingPresetId = Literal[
 # Modes with diagnose_only=False write ranking.options.title_similarity (scrape-
 # applied when saved). remake_diagnose is tester-only — live remakes use Scraping
 # → enable_remake_aliases + remake_alias_groups (never the default).
-TitleMatchingModeId = Literal["strict", "balanced", "aliases_friendly", "remake_diagnose"]
+TitleMatchingModeId = Literal[
+    "strict", "balanced", "aliases_friendly", "remake_diagnose"
+]
 
 TITLE_MATCHING_MODES: list[dict[str, Any]] = [
     {
@@ -114,7 +116,16 @@ RANKING_PRESETS: list[dict[str, Any]] = [
         "label": "WEB-DL permissive",
         "description": "Disney+/Amazon friendly — DDP/DD fetch on; remux/AV1/DV allowed.",
         "enableFetch": {
-            "quality": ["avc", "hevc", "av1", "web", "webdl", "hdtv", "bluray", "remux"],
+            "quality": [
+                "avc",
+                "hevc",
+                "av1",
+                "web",
+                "webdl",
+                "hdtv",
+                "bluray",
+                "remux",
+            ],
             "audio": [
                 "aac",
                 "atmos",

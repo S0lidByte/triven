@@ -65,7 +65,9 @@ def test_effective_rtn_model_selects_anime_pack_independently():
     anime_pack = settings_manager.get_effective_rtn_model(for_anime=True)
 
     assert movie_pack.model_dump() == settings_manager.settings.ranking.model_dump()
-    assert anime_pack.model_dump() == settings_manager.settings.ranking_anime.model_dump()
+    assert (
+        anime_pack.model_dump() == settings_manager.settings.ranking_anime.model_dump()
+    )
     assert anime_pack.custom_ranks.extras.dubbed.fetch is True
 
 
@@ -123,9 +125,7 @@ def test_get_ranking_overrides_bases_on_anime_pack():
         ranking_anime.options.title_similarity = 0.61
 
         # Force-enable resolutions only — base pack fields must survive
-        overridden = get_ranking_overrides(
-            {"resolutions": ["r1080p"]}, for_anime=True
-        )
+        overridden = get_ranking_overrides({"resolutions": ["r1080p"]}, for_anime=True)
         assert overridden is not None
         assert overridden.options.title_similarity == 0.61
         assert overridden.custom_ranks.extras.dubbed.fetch is True

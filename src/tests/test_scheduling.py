@@ -45,7 +45,6 @@ def test_container():
             pass
 
 
-
 @pytest.fixture(scope="session")
 def db_engine(test_container):
     """One engine + one migrated schema for the whole test session."""

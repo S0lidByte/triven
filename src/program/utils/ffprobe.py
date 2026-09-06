@@ -346,11 +346,13 @@ def parse_media_url(url: str) -> FFProbeMediaMetadata:
                             else "",
                         )
                     )
-                case FFProbeDataStream() | FFProbeAttachmentStream() | FFProbeOtherStream():
+                case (
+                    FFProbeDataStream()
+                    | FFProbeAttachmentStream()
+                    | FFProbeOtherStream()
+                ):
                     pass
 
         return metadata
     except Exception as e:
         raise ValueError(f"Unexpected error during ffprobe of {url}: {e}") from e
-
-

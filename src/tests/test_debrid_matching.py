@@ -25,7 +25,9 @@ def downloader():
         return instance
 
 
-def _download_result(filename: str = "file.mkv") -> tuple[DebridFile, DownloadedTorrent]:
+def _download_result(
+    filename: str = "file.mkv",
+) -> tuple[DebridFile, DownloadedTorrent]:
     file = DebridFile(
         file_id=1,
         filename=filename,
@@ -41,7 +43,9 @@ def _download_result(filename: str = "file.mkv") -> tuple[DebridFile, Downloaded
     return file, result
 
 
-def _parsed(filename: str, *, seasons: list[int], episodes: list[int], type: str) -> ParsedData:
+def _parsed(
+    filename: str, *, seasons: list[int], episodes: list[int], type: str
+) -> ParsedData:
     return ParsedData(
         raw_title=filename,
         parsed_title="title",
@@ -66,7 +70,10 @@ def test_match_file_to_item_movie(downloader):
 
     with patch.object(downloader, "_update_attributes") as update:
         matched = downloader.match_file_to_item(
-            item, _parsed(file.filename, seasons=[], episodes=[], type="movie"), file, result
+            item,
+            _parsed(file.filename, seasons=[], episodes=[], type="movie"),
+            file,
+            result,
         )
 
     assert matched is True
@@ -80,8 +87,11 @@ def test_match_file_to_item_episode(downloader):
 
     with patch.object(downloader, "_update_attributes"):
         matched = downloader.match_file_to_item(
-            episode, _parsed(file.filename, seasons=[1], episodes=[1], type="episode"),
-            file, result, show=show,
+            episode,
+            _parsed(file.filename, seasons=[1], episodes=[1], type="episode"),
+            file,
+            result,
+            show=show,
         )
 
     assert matched is True
@@ -93,8 +103,11 @@ def test_match_file_to_item_season_matches_all_files(downloader):
 
     with patch.object(downloader, "_update_attributes"):
         matched = downloader.match_file_to_item(
-            season, _parsed(file.filename, seasons=[1], episodes=[1, 2], type="episode"),
-            file, result, show=show,
+            season,
+            _parsed(file.filename, seasons=[1], episodes=[1, 2], type="episode"),
+            file,
+            result,
+            show=show,
         )
 
     assert matched is True
@@ -107,8 +120,11 @@ def test_match_file_to_item_partial_season_is_match(downloader):
 
     with patch.object(downloader, "_update_attributes"):
         matched = downloader.match_file_to_item(
-            season, _parsed(file.filename, seasons=[1], episodes=[1], type="episode"),
-            file, result, show=show,
+            season,
+            _parsed(file.filename, seasons=[1], episodes=[1], type="episode"),
+            file,
+            result,
+            show=show,
         )
 
     assert matched is True
@@ -117,7 +133,9 @@ def test_match_file_to_item_partial_season_is_match(downloader):
 def test_update_item_attributes_returns_false_for_empty_container(downloader):
     item = Movie({"imdb_id": "tt1375666", "requested_by": "user", "title": "Inception"})
     result = DownloadedTorrent(
-        id=1, infohash="abc123", container=TorrentContainer(infohash="abc123"),
+        id=1,
+        infohash="abc123",
+        container=TorrentContainer(infohash="abc123"),
         info=TorrentInfo(id=1, name="Inception.mkv"),
     )
 

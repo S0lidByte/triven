@@ -3,6 +3,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from program.media.item import Episode
 from program.media.state import States
 from program.types import Event
@@ -39,11 +41,16 @@ def _episode_with_streams() -> SimpleNamespace:
         failed_attempts=2,
         updated=False,
         last_state=States.Completed,
+        media_entry=None,
+        parent=None,
+        store_state=MagicMock(),
     )
     episode.blacklist_active_stream = Episode.blacklist_active_stream.__get__(
         episode, SimpleNamespace
     )
-    episode.blacklist_stream = Episode.blacklist_stream.__get__(episode, SimpleNamespace)
+    episode.blacklist_stream = Episode.blacklist_stream.__get__(
+        episode, SimpleNamespace
+    )
     episode.prepare_for_automatic_rescrape = (
         Episode.prepare_for_automatic_rescrape.__get__(episode, SimpleNamespace)
     )
@@ -164,3 +171,193 @@ def test_state_transition_indexed_with_overrides_queues_scrape():
 
     assert processed.service is scraping
     assert list(processed.related_media_items) == [episode]
+
+
+@pytest.mark.asyncio
+@patch("sqlalchemy.orm.object_session")
+@patch("program.media.item.object_session")
+@patch("routers.secure.items.db_session")
+@patch("routers.secure.items.apply_item_mutation")
+async def test_active_stream_blacklisting_lifecycle_ordering(
+    mock_apply_mutation,
+    mock_db_session,
+    mock_object_session,
+    mock_orm_object_session,
+):
+    from routers.secure.items import blacklist_stream
+
+    episode = _episode_with_streams()
+    active_stream = episode.active_stream
+    entry = MagicMock()
+    entry.path = "/media/tv/Test Show/S01E01.mkv"
+    episode.media_entry = entry
+    episode.filesystem_entries = [entry]
+    episode.subtitles = [MagicMock()]
+
+    session = MagicMock()
+    session.execute.return_value.unique.return_value.scalar_one_or_none.return_value = (
+        episode
+    )
+    session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db_session.return_value.__enter__.return_value = session
+    mock_object_session.return_value = session
+    mock_orm_object_session.return_value = session
+
+    call_order = []
+
+    def _apply_mutation_side_effect(
+        program, sess, item, mutation_fn, bubble_parents=True
+    ):
+        mutation_fn(item, sess)
+        call_order.append("mutation_applied")
+
+    mock_apply_mutation.side_effect = _apply_mutation_side_effect
+
+    def _commit_side_effect():
+        call_order.append("db_commit")
+
+    session.commit.side_effect = _commit_side_effect
+
+    updater = MagicMock()
+    updater.refresh_path = MagicMock(
+        side_effect=lambda p: call_order.append("updater_refresh")
+    )
+    updater.empty_trash = MagicMock(
+        side_effect=lambda p: call_order.append("updater_empty_trash")
+    )
+
+    program = MagicMock()
+    program.services.updater = updater
+    vfs_mock = MagicMock()
+    vfs_mock.remove.side_effect = lambda item: call_order.append("vfs_remove")
+    program.services.filesystem.riven_vfs = vfs_mock
+    program.riven_vfs = vfs_mock
+
+    from program.program import Program
+
+    di = {Program: program}
+
+    with patch("routers.secure.items.di", di):
+        response = await blacklist_stream(item_id=42, stream_id=active_stream.id)
+
+    assert "Blacklisted active stream" in response.message
+    assert episode.active_stream is None
+    assert episode.filesystem_entries == []
+    assert episode.subtitles == []
+
+    # Verify strict lifecycle order:
+    # 1. mutation_applied -> 2. initial db_commit -> 3. vfs_remove -> 4. final db_commit -> 5. updater calls -> 6. emit event
+    assert call_order.index("mutation_applied") < call_order.index("db_commit")
+    assert call_order.index("db_commit") < call_order.index("vfs_remove")
+    assert call_order.index("vfs_remove") < call_order.index("updater_refresh")
+    assert call_order.index("updater_refresh") < call_order.index("updater_empty_trash")
+
+    program.em.add_event.assert_called_once()
+    event = program.em.add_event.call_args.args[0]
+    assert event.emitted_by == "RetryItem"
+    assert event.item_id == 42
+
+
+@pytest.mark.asyncio
+@patch("sqlalchemy.orm.object_session")
+@patch("program.media.item.object_session")
+@patch("routers.secure.items.db_session")
+@patch("routers.secure.items.apply_item_mutation")
+async def test_inactive_stream_blacklisting_leaves_vfs_untouched(
+    mock_apply_mutation,
+    mock_db_session,
+    mock_object_session,
+    mock_orm_object_session,
+):
+    from routers.secure.items import blacklist_stream
+
+    episode = _episode_with_streams()
+    inactive_stream = episode.streams[1]  # episode.active_stream is streams[0]
+    entry = MagicMock()
+    episode.filesystem_entries = [entry]
+
+    session = MagicMock()
+    session.execute.return_value.unique.return_value.scalar_one_or_none.return_value = (
+        episode
+    )
+    session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db_session.return_value.__enter__.return_value = session
+    mock_object_session.return_value = session
+    mock_orm_object_session.return_value = session
+
+    program = MagicMock()
+    vfs_mock = MagicMock()
+    program.services.filesystem.riven_vfs = vfs_mock
+
+    from program.program import Program
+
+    di = {Program: program}
+
+    with patch("routers.secure.items.di", di):
+        response = await blacklist_stream(item_id=42, stream_id=inactive_stream.id)
+
+    assert "Blacklisted stream" in response.message
+    assert episode.active_stream is episode.streams[0]
+    vfs_mock.remove.assert_not_called()
+    program.em.add_event.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("sqlalchemy.orm.object_session")
+@patch("program.media.item.object_session")
+@patch("routers.secure.items.db_session")
+@patch("routers.secure.items.apply_item_mutation")
+async def test_active_stream_blacklisting_external_failures_isolated(
+    mock_apply_mutation,
+    mock_db_session,
+    mock_object_session,
+    mock_orm_object_session,
+):
+    from routers.secure.items import blacklist_stream
+
+    episode = _episode_with_streams()
+    active_stream = episode.active_stream
+    entry = MagicMock()
+    entry.path = "/media/tv/Test Show/S01E01.mkv"
+    episode.media_entry = entry
+
+    session = MagicMock()
+    session.execute.return_value.unique.return_value.scalar_one_or_none.return_value = (
+        episode
+    )
+    session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_db_session.return_value.__enter__.return_value = session
+    mock_object_session.return_value = session
+    mock_orm_object_session.return_value = session
+
+    def _apply_mutation_side_effect(
+        program, sess, item, mutation_fn, bubble_parents=True
+    ):
+        mutation_fn(item, sess)
+
+    mock_apply_mutation.side_effect = _apply_mutation_side_effect
+
+    updater = MagicMock()
+    updater.refresh_path.side_effect = RuntimeError("Plex connection failed")
+    updater.empty_trash.side_effect = RuntimeError("Plex trash failed")
+
+    program = MagicMock()
+    program.services.updater = updater
+    vfs_mock = MagicMock()
+    vfs_mock.remove.side_effect = RuntimeError("VFS unmount error")
+    program.services.filesystem.riven_vfs = vfs_mock
+
+    from program.program import Program
+
+    di = {Program: program}
+
+    with patch("routers.secure.items.di", di):
+        response = await blacklist_stream(item_id=42, stream_id=active_stream.id)
+
+    # Blacklist mutation, active_stream clearing, and RetryItem event must still complete successfully
+    assert "Blacklisted active stream" in response.message
+    assert episode.active_stream is None
+    program.em.add_event.assert_called_once()
+    event = program.em.add_event.call_args.args[0]
+    assert event.emitted_by == "RetryItem"
+    assert event.item_id == 42

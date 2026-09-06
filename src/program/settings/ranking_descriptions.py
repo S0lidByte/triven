@@ -16,6 +16,7 @@ def _as_schema_object(value: Any) -> dict[str, Any] | None:
         return cast(dict[str, Any], value)
     return None
 
+
 # Log deny key → short explanation (also used as property description text).
 DENY_KEY_HELP: dict[str, str] = {
     # audio

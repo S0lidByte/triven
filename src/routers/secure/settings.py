@@ -210,8 +210,13 @@ async def set_all_settings(
     if "api_key" in new_settings:
         if new_settings["api_key"] == API_KEY_SENTINEL:
             new_settings["api_key"] = settings_manager.settings.api_key
-        elif not isinstance(new_settings["api_key"], str) or not new_settings["api_key"].strip():
-            raise HTTPException(status_code=400, detail="api_key cannot be empty or whitespace")
+        elif (
+            not isinstance(new_settings["api_key"], str)
+            or not new_settings["api_key"].strip()
+        ):
+            raise HTTPException(
+                status_code=400, detail="api_key cannot be empty or whitespace"
+            )
 
     current_settings = settings_manager.settings.model_dump()
 
@@ -258,7 +263,9 @@ async def set_settings(
         if values["api_key"] == API_KEY_SENTINEL:
             values["api_key"] = settings_manager.settings.api_key
         elif not isinstance(values["api_key"], str) or not values["api_key"].strip():
-            raise HTTPException(status_code=400, detail="api_key cannot be empty or whitespace")
+            raise HTTPException(
+                status_code=400, detail="api_key cannot be empty or whitespace"
+            )
 
     current_settings = settings_manager.settings.model_dump()
     requested_paths = [p.strip() for p in paths.split(",") if p.strip()]

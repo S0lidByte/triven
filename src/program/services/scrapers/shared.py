@@ -272,7 +272,9 @@ def _should_retry_as_untagged_english(
     allow_english = getattr(
         settings.options,
         "allow_english_in_languages",
-        True if getattr(settings.options, "get", None) is None else settings.options.get("allow_english_in_languages", True),  # type: ignore[union-attr]
+        True
+        if getattr(settings.options, "get", None) is None
+        else settings.options.get("allow_english_in_languages", True),  # type: ignore[union-attr]
     )
     if not allow_english:
         return False
@@ -677,8 +679,12 @@ def _accumulate_ranked_torrents(
             # FIX-11: Only enforce this check when torrent.data.seasons is populated.
             # "Complete Series" releases often carry no season tags, so
             # `season.number in []` always returns False and valid packs get rejected.
-            if not manual and torrent.data.seasons and not all(
-                season.number in torrent.data.seasons for season in item.seasons
+            if (
+                not manual
+                and torrent.data.seasons
+                and not all(
+                    season.number in torrent.data.seasons for season in item.seasons
+                )
             ):
                 logger.trace(
                     f"Skipping torrent with incorrect number of seasons for {item.log_string}: {raw_title}"
@@ -687,11 +693,7 @@ def _accumulate_ranked_torrents(
                     funnel.record_content_filter()
                 continue
 
-            if (
-                not manual
-                and torrent.data.episodes
-                and not torrent.data.seasons
-            ):
+            if not manual and torrent.data.episodes and not torrent.data.seasons:
                 if len(item.seasons) == 1:
                     if not all(
                         episode.number in torrent.data.episodes
@@ -711,7 +713,6 @@ def _accumulate_ranked_torrents(
                     if funnel is not None:
                         funnel.record_content_filter()
                     continue
-
 
         if isinstance(item, Season):
             if (
@@ -740,7 +741,11 @@ def _accumulate_ranked_torrents(
             # Gate on torrent.data.seasons being non-empty: season-less releases (e.g.
             # "Complete Series", anime without SXX tags) should not be rejected here.
             # The earlier check at line 697-708 already handles explicit wrong seasons.
-            if not manual and torrent.data.seasons and item.number not in torrent.data.seasons:
+            if (
+                not manual
+                and torrent.data.seasons
+                and item.number not in torrent.data.seasons
+            ):
                 logger.trace(
                     f"Skipping incorrect season torrent for {item.log_string}: {raw_title}"
                 )

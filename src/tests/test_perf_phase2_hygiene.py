@@ -27,6 +27,7 @@ def test_upload_logs_offloads_sync_http_to_thread():
     assert response.url == fake_url
     to_thread_mock.assert_awaited_once_with(default_router._upload_logs_to_paste)
 
+
 def test_content_service_jobs_coalesce_missed_runs():
     program = MagicMock()
 

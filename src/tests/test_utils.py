@@ -32,7 +32,9 @@ def test_generate_api_key_generates_and_redacts_secret(monkeypatch):
     assert new_key_call.args[3] == "AAAA"
 
     logged_messages = [str(call.args[0]) for call in warning.call_args_list]
-    assert not any(re.search(r"\b[A-Za-z0-9]{32}\b", message) for message in logged_messages)
+    assert not any(
+        re.search(r"\b[A-Za-z0-9]{32}\b", message) for message in logged_messages
+    )
 
 
 def test_generate_api_key_uses_existing_key(monkeypatch):

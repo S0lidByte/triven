@@ -65,9 +65,7 @@ def test_fair_usage_warning_logged_once_per_cooldown(rd_downloader):
     rd_downloader._fair_usage_until = time.time() + 120
     rd_downloader._fair_usage_warned = False
 
-    with patch(
-        "program.services.downloaders.realdebrid.logger"
-    ) as mock_logger:
+    with patch("program.services.downloaders.realdebrid.logger") as mock_logger:
         with pytest.raises(DebridServiceFairUsageLimitException):
             rd_downloader.unrestrict_link("https://real-debrid.com/d/one")
 

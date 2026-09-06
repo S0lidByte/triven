@@ -25,7 +25,9 @@ def _register_streaming_di():
         del di[Cache]
 
 
-def _chunker(*, file_size: int = 10 * 1024 * 1024, chunk_size: int = 1024 * 1024) -> Chunker:
+def _chunker(
+    *, file_size: int = 10 * 1024 * 1024, chunk_size: int = 1024 * 1024
+) -> Chunker:
     return Chunker(
         cache_key="movie.mkv",
         chunk_size=chunk_size,

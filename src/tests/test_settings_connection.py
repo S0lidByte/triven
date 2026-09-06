@@ -107,9 +107,7 @@ def test_real_debrid_ok(mock_settings):
     fake_client = MagicMock()
     fake_client.__enter__.return_value = fake_client
     fake_client.__exit__.return_value = False
-    fake_client.get.return_value = _FakeResponse(
-        200, payload={"username": "cineflow"}
-    )
+    fake_client.get.return_value = _FakeResponse(200, payload={"username": "cineflow"})
 
     with patch.object(ct.httpx, "Client", return_value=fake_client):
         result = ct._probe_real_debrid()
@@ -147,7 +145,10 @@ def test_all_debrid_ok(mock_settings):
     assert result.ok is True
     assert result.message == "Connected to AllDebrid"
     assert fake_client.get.call_args.args[0] == "/v4/user"
-    assert "Bearer ad-secret-key" in fake_client.get.call_args.kwargs["headers"]["Authorization"]
+    assert (
+        "Bearer ad-secret-key"
+        in fake_client.get.call_args.kwargs["headers"]["Authorization"]
+    )
 
 
 def test_debrid_link_ok(mock_settings):
@@ -162,7 +163,10 @@ def test_debrid_link_ok(mock_settings):
     assert result.ok is True
     assert result.message == "Connected to Debrid-Link"
     assert fake_client.get.call_args.args[0] == "/account/infos"
-    assert "Bearer dl-secret-key" in client_factory.call_args.kwargs["headers"]["Authorization"]
+    assert (
+        "Bearer dl-secret-key"
+        in client_factory.call_args.kwargs["headers"]["Authorization"]
+    )
 
 
 def test_plex_ok(mock_settings):

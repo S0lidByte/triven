@@ -19,6 +19,7 @@ from program.db.db import db_session
 from program.media.item import Episode, MediaItem, Movie, Season, Show
 from program.media.models import MediaMetadata
 from program.media.state import States
+from program.media.stream import Stream
 from program.program import Program
 from program.types import Event
 
@@ -43,15 +44,14 @@ class SortOrderEnum(str, Enum):
     def sort_type(self) -> str:
         return "title" if self.value.startswith("title") else "date"
 
+
 router = APIRouter(
     prefix="/items",
     tags=["items"],
     responses={404: {"description": "Not found"}},
 )
 
-_get_items_count_cache: TTLCache[str, int] = TTLCache[str, int](
-    maxsize=1024, ttl=5
-)
+_get_items_count_cache: TTLCache[str, int] = TTLCache[str, int](maxsize=1024, ttl=5)
 
 _RETRY_SKIP_RESET_STATES = frozenset(
     {
@@ -85,7 +85,6 @@ def _reset_scrape_state_for_retry(item: MediaItem) -> None:
     item.scraped_times = 1
     item.failed_attempts = 0
     item.streams.clear()
-    item.blacklisted_streams.clear()
     item.active_stream = None
     item.store_state(States.Indexed)
 
@@ -1006,34 +1005,34 @@ async def remove_item(
             refresh_paths = list[str]()
 
             if updater and item.filesystem_entry and (media_entry := item.media_entry):
-                    for vfs_path in media_entry.get_all_vfs_paths():
-                        # Check if VFS path is already absolute (filesystem path)
-                        # VFS paths are normally VFS-relative (e.g., /movies/...) but could be
-                        # absolute filesystem paths in some configurations
-                        if os.path.isabs(vfs_path) and not vfs_path.startswith(
-                            str(updater.library_path)
-                        ):
-                            # VFS path is absolute but not under library_path - use as-is
-                            abs_path = vfs_path
-                        elif os.path.isabs(vfs_path) and vfs_path.startswith(
-                            str(updater.library_path)
-                        ):
-                            # VFS path is already an absolute path under library_path - use as-is
-                            abs_path = vfs_path
-                        else:
-                            # VFS path is VFS-relative - join with library_path
-                            abs_path = os.path.join(
-                                updater.library_path, vfs_path.lstrip("/")
-                            )
+                for vfs_path in media_entry.get_all_vfs_paths():
+                    # Check if VFS path is already absolute (filesystem path)
+                    # VFS paths are normally VFS-relative (e.g., /movies/...) but could be
+                    # absolute filesystem paths in some configurations
+                    if os.path.isabs(vfs_path) and not vfs_path.startswith(
+                        str(updater.library_path)
+                    ):
+                        # VFS path is absolute but not under library_path - use as-is
+                        abs_path = vfs_path
+                    elif os.path.isabs(vfs_path) and vfs_path.startswith(
+                        str(updater.library_path)
+                    ):
+                        # VFS path is already an absolute path under library_path - use as-is
+                        abs_path = vfs_path
+                    else:
+                        # VFS path is VFS-relative - join with library_path
+                        abs_path = os.path.join(
+                            updater.library_path, vfs_path.lstrip("/")
+                        )
 
-                        if isinstance(item, Movie):
-                            refresh_path = os.path.dirname(os.path.dirname(abs_path))
-                        else:  # show
-                            refresh_path = os.path.dirname(
-                                os.path.dirname(os.path.dirname(abs_path))
-                            )
-                        if refresh_path not in refresh_paths:
-                            refresh_paths.append(refresh_path)
+                    if isinstance(item, Movie):
+                        refresh_path = os.path.dirname(os.path.dirname(abs_path))
+                    else:  # show
+                        refresh_path = os.path.dirname(
+                            os.path.dirname(os.path.dirname(abs_path))
+                        )
+                    if refresh_path not in refresh_paths:
+                        refresh_paths.append(refresh_path)
 
             # 3. Delete from Overseerr
             if item.overseerr_id and overseerr:
@@ -1117,6 +1116,18 @@ async def get_item_streams(
     )
 
 
+def _is_active_stream(item: MediaItem, stream: Stream) -> bool:
+    """Check if stream is active for item using primary stream ID authority with infohash fallback."""
+    active = item.active_stream
+    if active is None:
+        return False
+    if active.id is not None and stream.id is not None:
+        return active.id == stream.id
+    return bool(
+        active.infohash and stream.infohash and active.infohash == stream.infohash
+    )
+
+
 @router.post(
     "/{item_id}/streams/{stream_id}/blacklist",
     summary="Blacklist Media Item Stream",
@@ -1164,21 +1175,109 @@ async def blacklist_stream(
                 detail="Stream not found",
             )
 
-        def mutation(i: MediaItem, _: Session):
+        is_active = _is_active_stream(item, stream)
+
+        if not is_active:
+            # Metadata-only blacklist for inactive streams
+            def inactive_mutation(i: MediaItem, _: Session):
+                i.blacklist_stream(stream)
+
+            apply_item_mutation(
+                di[Program],
+                session,
+                item,
+                inactive_mutation,
+                bubble_parents=True,
+            )
+
+            session.commit()
+
+            return MessageResponse(
+                message=f"Blacklisted stream {stream_id} for item {item_id}",
+            )
+
+        # Active stream blacklisting lifecycle
+        # Step 1: Capture refresh paths before ORM cleanup
+        refresh_paths: list[str] = []
+        media_entry = getattr(item, "media_entry", None)
+        if media_entry and getattr(media_entry, "path", None):
+            refresh_paths.append(str(media_entry.path))
+
+        # Step 2: Persist authoritative database mutation
+        def active_mutation(i: MediaItem, _: Session):
             i.blacklist_stream(stream)
+            i.active_stream = None
+            i.scraped_at = None
+            i.scraped_times = 0
+            i.failed_attempts = 0
+            i.store_state(States.Indexed)
 
         apply_item_mutation(
             di[Program],
             session,
             item,
-            mutation,
+            active_mutation,
             bubble_parents=True,
         )
 
         session.commit()
 
+        # Step 3: VFS teardown BEFORE clearing filesystem_entries / subtitles
+        try:
+            program = di[Program]
+            riven_vfs = getattr(program, "riven_vfs", None) or getattr(
+                getattr(getattr(program, "services", None), "filesystem", None),
+                "riven_vfs",
+                None,
+            )
+            if riven_vfs:
+                riven_vfs.remove(item)
+        except Exception as e:
+            logger.error(
+                f"Failed VFS teardown for blacklisted active stream on item {item.id}: {e}"
+            )
+
+        # Step 4: Clear persisted filesystem state after VFS teardown attempt
+        try:
+            item.filesystem_entries.clear()
+            item.subtitles.clear()
+            session.commit()
+        except Exception as e:
+            logger.error(
+                f"Failed clearing filesystem/subtitle relations for item {item.id}: {e}"
+            )
+
+        # Step 5 & 6: Targeted media server path refresh and section trash cleanup
+        try:
+            program = di[Program]
+            if (
+                hasattr(program, "services")
+                and program.services
+                and program.services.updater
+            ):
+                updater = program.services.updater
+                for path in refresh_paths:
+                    try:
+                        updater.refresh_path(path)
+                    except Exception as e:
+                        logger.error(f"Failed updater refresh for path {path}: {e}")
+                    try:
+                        updater.empty_trash(path)
+                    except Exception as e:
+                        logger.error(f"Failed Plex trash cleanup for path {path}: {e}")
+        except Exception as e:
+            logger.error(
+                f"Failed media server refresh for path(s) {refresh_paths}: {e}"
+            )
+
+        # Step 7: Trigger re-scraping via RetryItem event
+        try:
+            di[Program].em.add_event(Event("RetryItem", item.id))
+        except Exception as e:
+            logger.error(f"Failed to emit RetryItem event for item {item.id}: {e}")
+
         return MessageResponse(
-            message=f"Blacklisted stream {stream_id} for item {item_id}",
+            message=f"Blacklisted active stream {stream_id} for item {item_id}; teardown completed and re-scrape enqueued",
         )
 
 

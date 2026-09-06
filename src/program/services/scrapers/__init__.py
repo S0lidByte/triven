@@ -92,7 +92,9 @@ class Scraping(Runner[ScraperModel, ScraperService[Observable]]):
         logger.log("SCRAPER", funnel.summary_line(item.log_string))
         remember_funnel_summary(
             getattr(item, "id", None),
-            funnel.to_summary(item_id=getattr(item, "id", None), item_log=item.log_string),
+            funnel.to_summary(
+                item_id=getattr(item, "id", None), item_log=item.log_string
+            ),
         )
 
         new_streams = [
@@ -294,13 +296,14 @@ class Scraping(Runner[ScraperModel, ScraperService[Observable]]):
                         yield (service_name, {})
 
                 except Empty:
-                    logger.warning("Timeout waiting for scraper results — cancelling remaining futures")
+                    logger.warning(
+                        "Timeout waiting for scraper results — cancelling remaining futures"
+                    )
                     for future in futures:
                         future.cancel()
                     break
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
-
 
     @staticmethod
     def scrape_cooldown_seconds(scraped_times: int) -> float:

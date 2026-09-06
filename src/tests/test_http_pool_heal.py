@@ -145,8 +145,10 @@ def test_concurrent_heal_only_one_recycles():
 
 def test_trio_streaming_http_pool_initialization_and_di_isolation():
     """TrioStreamingHttpPool creates clients under Trio and never touches global DI."""
+
     async def _run() -> None:
         import sniffio
+
         assert sniffio.current_async_library() == "trio"
 
         sentinel_client = AsyncClient()
@@ -174,6 +176,7 @@ def test_trio_streaming_http_pool_initialization_and_di_isolation():
 
 def test_trio_streaming_http_pool_admission_limits():
     """TrioStreamingHttpPool enforces total and body capacity limiters."""
+
     async def _run() -> None:
         pool = http_pool.TrioStreamingHttpPool()
         try:
@@ -218,11 +221,13 @@ def test_trio_streaming_http_pool_admission_limits():
 
 def test_trio_streaming_http_pool_lease_and_single_flight_heal():
     """TrioStreamingHttpPool manages leases and single-flight healing without mutating DI."""
+
     async def _run() -> None:
         sentinel_client = AsyncClient()
         di[AsyncClient] = sentinel_client
 
         shed_called = {"count": 0}
+
         async def _shed():
             shed_called["count"] += 1
 
@@ -237,6 +242,7 @@ def test_trio_streaming_http_pool_lease_and_single_flight_heal():
 
             # Concurrent heal attempts
             results: list[bool] = []
+
             async def _attempt_heal():
                 res = await pool.heal_on_pool_timeout()
                 results.append(res)
@@ -266,6 +272,7 @@ def test_trio_streaming_http_pool_lease_and_single_flight_heal():
 
 def test_trio_streaming_http_pool_skips_stale_generation_heal():
     """A late timeout from a retired generation cannot recycle the new pool."""
+
     async def _run() -> None:
         shed_called = {"count": 0}
 
@@ -288,6 +295,7 @@ def test_trio_streaming_http_pool_skips_stale_generation_heal():
 
 def test_trio_streaming_http_pool_drain_and_teardown():
     """TrioStreamingHttpPool handles multiple generations and teardown."""
+
     async def _run() -> None:
         pool = http_pool.TrioStreamingHttpPool()
         try:

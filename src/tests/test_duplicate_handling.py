@@ -1,4 +1,4 @@
-﻿"""
+"""
 Test script to verify duplicate handling works correctly.
 This script tests the new duplicate handling functionality.
 """
@@ -68,14 +68,16 @@ def duplicate_db_session(duplicate_db_engine):
     finally:
         session.close()
         with duplicate_db_engine.connect() as connection:
-            tables = connection.execute(
-                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-            ).scalars().all()
+            tables = (
+                connection.execute(
+                    text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+                )
+                .scalars()
+                .all()
+            )
             if tables:
                 quoted = ", ".join(f'"public"."{table}"' for table in tables)
-                connection.execute(
-                    text(f"TRUNCATE {quoted} RESTART IDENTITY CASCADE")
-                )
+                connection.execute(text(f"TRUNCATE {quoted} RESTART IDENTITY CASCADE"))
                 connection.commit()
 
 
@@ -102,9 +104,7 @@ class TestDuplicateHandling:
 
     def test_get_item_by_external_id_non_existent(self, duplicate_db_session):
         """Test external-ID lookup with a missing identifier."""
-        item = item_exists_by_any_id(
-            imdb_id="tt9999999", session=duplicate_db_session
-        )
+        item = item_exists_by_any_id(imdb_id="tt9999999", session=duplicate_db_session)
         assert item is False, "Non-existent external ID should return False"
 
     def test_get_item_by_external_id_existent(self):
@@ -201,4 +201,3 @@ class TestDuplicateHandling:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

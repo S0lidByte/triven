@@ -132,9 +132,8 @@ def resolve_cache_max_bytes(
                 "Raise filesystem.tmpfs_cache_max_mb (and container shm/mem limits) "
                 "for a larger RAM cache, or move cache_dir off tmpfs onto disk."
             )
-    elif (
-        has_free_space_measurement
-        and configured_bytes > int(free * DISK_FREE_FRACTION)
+    elif has_free_space_measurement and configured_bytes > int(
+        free * DISK_FREE_FRACTION
     ):
         effective = int(free * DISK_FREE_FRACTION)
         reason = (

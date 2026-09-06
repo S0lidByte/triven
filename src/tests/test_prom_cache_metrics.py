@@ -108,7 +108,9 @@ def _metrics_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app)
 
 
-def test_prometheus_metrics_endpoint_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prometheus_metrics_endpoint_requires_auth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client = _metrics_client(monkeypatch)
 
     denied = client.get("/metrics")

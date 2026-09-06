@@ -80,7 +80,9 @@ def test_initial_state(movie, show, season, episode):
     assert movie.state == States.Requested, "Movie should start in Requested state"
 
     # A show with only unaired seasons is unreleased; its child hierarchy is unknown.
-    assert show.state == States.Unreleased, "Show should start unreleased when its seasons have not aired"
+    assert show.state == States.Unreleased, (
+        "Show should start unreleased when its seasons have not aired"
+    )
     assert season.state == States.Unknown, "Season should start in Unknown state"
     assert episode.state == States.Unknown, "Episode should start in Unknown state"
 
@@ -100,7 +102,9 @@ def test_indexed_state(movie):
     movie.set("title", "Inception")
     movie.aired_at = datetime.now() - timedelta(days=1)
     # Then: The item's state should be Indexed
-    assert movie.state == States.Indexed, "Released movie metadata should transition to Indexed"
+    assert movie.state == States.Indexed, (
+        "Released movie metadata should transition to Indexed"
+    )
 
 
 def test_scraped_state(episode):
@@ -114,7 +118,9 @@ def test_scraped_state(episode):
 def test_downloaded_state(episode):
     """Test transition to the Downloaded state."""
     # Given: A media item (episode) with a downloader-created filesystem entry
-    with patch.object(Episode, "filesystem_entry", new_callable=PropertyMock, return_value=object()):
+    with patch.object(
+        Episode, "filesystem_entry", new_callable=PropertyMock, return_value=object()
+    ):
         # Then: The item's state should be Downloaded
         assert episode.state == States.Downloaded, (
             "Episode should transition to Downloaded when it has a filesystem entry"
@@ -126,7 +132,9 @@ def test_completed_state(movie):
     # Given: A media item (movie) marked updated after library processing
     movie.updated = True
     # Then: The item's state should be Completed
-    assert movie.state == States.Completed, "Updated movie should transition to Completed state"
+    assert movie.state == States.Completed, (
+        "Updated movie should transition to Completed state"
+    )
 
 
 def test_show_state_transitions(show):
@@ -152,13 +160,20 @@ def test_show_state_transitions(show):
 )
 @pytest.mark.parametrize("item_fixture", ["movie", "show", "media_item_movie"])
 def test_process_event_transitions(
-    request, state, emitted_by, expected_service, item_fixture, process_event_with_services
+    request,
+    state,
+    emitted_by,
+    expected_service,
+    item_fixture,
+    process_event_with_services,
 ):
     """Test each state routes to the active service instance or stops processing."""
     item = request.getfixturevalue(item_fixture)
     item.last_state = state
     services = process_event_with_services
-    emitter = getattr(services, emitted_by) if emitted_by != "StateTransition" else emitted_by
+    emitter = (
+        getattr(services, emitted_by) if emitted_by != "StateTransition" else emitted_by
+    )
 
     processed_event = process_event(emitter, existing_item=item)
 

@@ -185,7 +185,9 @@ class DebridCDNUrl:
             self.url = url
         return False
 
-    def _log_transport_failure(self, *, kind: str, attempt: int, error: Exception) -> None:
+    def _log_transport_failure(
+        self, *, kind: str, attempt: int, error: Exception
+    ) -> None:
         """
         Log CDN transport failures without triple-ERROR spam on open retries.
 
@@ -433,7 +435,6 @@ class DebridCDNUrl:
                     session=session,
                 )
                 raise RefreshedURLIdenticalException
-
 
             self.url = url
 

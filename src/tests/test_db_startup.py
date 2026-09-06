@@ -77,12 +77,8 @@ class TestWaitForDatabase:
     @patch("program.db.db.time.sleep")
     @patch("program.db.db.db")
     @patch("program.db.db.probe_database")
-    def test_retries_recovery_mode_then_succeeds(
-        self, mock_probe, mock_db, mock_sleep
-    ):
-        recovery = _sa_operational(
-            "FATAL:  the database system is in recovery mode"
-        )
+    def test_retries_recovery_mode_then_succeeds(self, mock_probe, mock_db, mock_sleep):
+        recovery = _sa_operational("FATAL:  the database system is in recovery mode")
         mock_probe.side_effect = [recovery, recovery, None]
 
         wait_for_database(
@@ -114,12 +110,8 @@ class TestWaitForDatabase:
     @patch("program.db.db.time.sleep")
     @patch("program.db.db.db")
     @patch("program.db.db.probe_database")
-    def test_times_out_on_persistent_recovery(
-        self, mock_probe, mock_db, mock_sleep
-    ):
-        recovery = _sa_operational(
-            "FATAL:  the database system is in recovery mode"
-        )
+    def test_times_out_on_persistent_recovery(self, mock_probe, mock_db, mock_sleep):
+        recovery = _sa_operational("FATAL:  the database system is in recovery mode")
         mock_probe.side_effect = recovery
 
         with patch("program.db.db.time.monotonic", side_effect=[0.0, 0.0, 100.0]):
@@ -133,7 +125,10 @@ class TestWaitForDatabase:
 
 class TestCreateDatabaseIfNotExists:
     @patch("program.db.db.SQLAlchemy")
-    @patch("program.db.db.db_host", "postgresql+psycopg2://postgres:postgres@riven-db/riven")
+    @patch(
+        "program.db.db.db_host",
+        "postgresql+psycopg2://postgres:postgres@riven-db/riven",
+    )
     def test_treats_already_exists_as_success(self, mock_sqlalchemy):
         engine = MagicMock()
         connection = MagicMock()
@@ -155,9 +150,7 @@ class TestProgramEnsureDatabaseReady:
 
     @patch("program.program.create_database_if_not_exists", return_value=True)
     @patch("program.program.wait_for_database")
-    def test_creates_when_missing_then_waits(
-        self, mock_wait, mock_create
-    ):
+    def test_creates_when_missing_then_waits(self, mock_wait, mock_create):
         missing = _sa_operational('FATAL:  database "riven" does not exist')
         mock_wait.side_effect = [missing, None]
 
@@ -170,12 +163,8 @@ class TestProgramEnsureDatabaseReady:
 
     @patch("program.program.create_database_if_not_exists")
     @patch("program.program.wait_for_database")
-    def test_does_not_create_on_recovery_timeout(
-        self, mock_wait, mock_create
-    ):
-        recovery = _sa_operational(
-            "FATAL:  the database system is in recovery mode"
-        )
+    def test_does_not_create_on_recovery_timeout(self, mock_wait, mock_create):
+        recovery = _sa_operational("FATAL:  the database system is in recovery mode")
         mock_wait.side_effect = recovery
 
         program = Program.__new__(Program)

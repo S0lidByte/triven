@@ -98,7 +98,11 @@ class StremThru(ScraperService[StremThruConfig]):
         except Exception as e:
             from requests import HTTPError
 
-            if isinstance(e, HTTPError) and e.response is not None and e.response.status_code == 429:
+            if (
+                isinstance(e, HTTPError)
+                and e.response is not None
+                and e.response.status_code == 429
+            ):
                 from program.utils.exceptions import RateLimitError
 
                 retry_after = e.response.headers.get("Retry-After")

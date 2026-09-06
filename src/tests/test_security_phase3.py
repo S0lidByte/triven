@@ -64,9 +64,7 @@ def test_webhook_secret_required_when_configured(monkeypatch):
         "routers.secure.webhooks.settings_manager",
         MagicMock(
             settings=MagicMock(
-                content=MagicMock(
-                    overseerr=MagicMock(webhook_secret="super-secret")
-                )
+                content=MagicMock(overseerr=MagicMock(webhook_secret="super-secret"))
             )
         ),
     )

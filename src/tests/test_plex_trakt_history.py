@@ -138,9 +138,7 @@ def test_plex_webhook_secret_accepts_header_or_query(monkeypatch):
         "routers.secure.webhooks.settings_manager",
         MagicMock(
             settings=MagicMock(
-                content=MagicMock(
-                    plex_webhook=MagicMock(webhook_secret="plex-secret")
-                )
+                content=MagicMock(plex_webhook=MagicMock(webhook_secret="plex-secret"))
             )
         ),
     )

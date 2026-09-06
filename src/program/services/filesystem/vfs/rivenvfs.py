@@ -809,7 +809,9 @@ class RivenVFS(pyfuse3.Operations):
             except Exception:
                 logger.exception("Failed to request graceful FUSE unmount")
         else:
-            logger.warning("pyfuse3 trio token unavailable during close; forcing unmount")
+            logger.warning(
+                "pyfuse3 trio token unavailable during close; forcing unmount"
+            )
 
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=10)
@@ -993,7 +995,6 @@ class RivenVFS(pyfuse3.Operations):
                 session.commit()
 
             logger.debug(f"Re-matched {rematched_count} entries with updated profiles")
-
 
         # Step 2: Clear VFS tree and rebuild from scratch.
         # M-4: Preserve inodes currently held by open file handles so in-progress
@@ -1198,7 +1199,6 @@ class RivenVFS(pyfuse3.Operations):
         self._flush_pending_invalidations()
 
         logger.debug(f"Individual sync complete for item {item.id}")
-
 
     def _ensure_library_profile_directories(self) -> None:
         """
@@ -2186,8 +2186,8 @@ class RivenVFS(pyfuse3.Operations):
                 self._next_fh = pyfuse3.FileHandleT(self._next_fh + 1)
                 self._file_handles[fh] = {
                     "inode": inode,  # Store inode to resolve node/metadata later
-                    "path": path,    # Store path so release() can close the stream
-                                     # even if the VFS node has been deleted (sync/remove).
+                    "path": path,  # Store path so release() can close the stream
+                    # even if the VFS node has been deleted (sync/remove).
                     "last_read_end": 0,
                     "subtitle_content": None,
                 }

@@ -93,7 +93,9 @@ class ScrapeFunnelStats:
     def top_rtn_reasons(self, limit: int = 5) -> list[tuple[str, int]]:
         return self.rtn_reasons.most_common(limit)
 
-    def to_summary(self, *, item_id: int | None = None, item_log: str | None = None) -> dict[str, Any]:
+    def to_summary(
+        self, *, item_id: int | None = None, item_log: str | None = None
+    ) -> dict[str, Any]:
         """JSON-serializable funnel summary for API / UI."""
 
         return {

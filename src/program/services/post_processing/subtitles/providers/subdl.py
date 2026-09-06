@@ -96,7 +96,6 @@ class SubDLProvider(SubtitleProvider):
         tmdb_id: str | None = None,
     ) -> list[SubtitleItem]:
 
-
         if not tmdb_id and not imdb_id:
             logger.debug("SubDL search skipped: no TMDB or IMDB ID")
             return []

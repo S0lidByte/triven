@@ -299,9 +299,7 @@ def test_max_streams_early_exit_when_more_remain(downloader, mock_item):
     mock_item.store_state.assert_not_called()
 
 
-def test_max_streams_exhaustion_applies_backoff_when_none_remain(
-    downloader, mock_item
-):
+def test_max_streams_exhaustion_applies_backoff_when_none_remain(downloader, mock_item):
     """When ≤3 streams all fail, apply exhaustion backoff (not bare early yield)."""
     from program.media.state import States
 

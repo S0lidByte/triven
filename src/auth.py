@@ -165,7 +165,13 @@ def resolve_actor_context(
     service key and an unexpired HMAC signature constructed by the trusted BFF.
     """
 
-    actor_values = (actor_id, actor_roles, actor_client, actor_timestamp, actor_signature)
+    actor_values = (
+        actor_id,
+        actor_roles,
+        actor_client,
+        actor_timestamp,
+        actor_signature,
+    )
     has_any_actor_header = any(value is not None for value in actor_values)
     if not has_any_actor_header:
         if service.kind == "legacy":

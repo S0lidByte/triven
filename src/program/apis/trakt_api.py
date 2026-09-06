@@ -246,7 +246,6 @@ class TraktAPI:
 
                 break
 
-
         return all_data
 
     def get_watchlist_items(self, user: str) -> list[Watchlist]:

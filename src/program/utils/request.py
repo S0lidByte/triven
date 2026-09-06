@@ -810,9 +810,7 @@ class SmartSession:
             except Exception:
                 try:
                     dt = cast(datetime, parsedate_to_datetime(ra))
-                    delay = max(
-                        0.0, float(int(round(dt.timestamp() - time.time())))
-                    )
+                    delay = max(0.0, float(int(round(dt.timestamp() - time.time()))))
                 except Exception:
                     delay = None
 

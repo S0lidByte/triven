@@ -90,6 +90,7 @@ class SubtitleService(AnalysisService[SubtitleConfig]):
                 logger.debug("SubDL provider initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize SubDL provider: {e}")
+
     @classmethod
     def _parse_languages(cls, language_codes: list[str]) -> list[str]:
         """

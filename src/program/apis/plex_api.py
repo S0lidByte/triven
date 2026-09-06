@@ -82,7 +82,6 @@ class PlexAPI:
 
         response = self.session.get(url, headers={"Accept": "application/json"})
 
-
         class ResponseData(BaseModel):
             class MediaContainerModel(BaseModel):
                 class MetadataModel(BaseModel):
@@ -96,7 +95,9 @@ class PlexAPI:
             try:
                 data = ResponseData.model_validate(response.json())
             except (ValueError, Exception) as e:
-                logger.warning(f"Failed to parse JSON response for rating key {ratingKey}: {e}")
+                logger.warning(
+                    f"Failed to parse JSON response for rating key {ratingKey}: {e}"
+                )
                 return None
 
             if not data.MediaContainer.Metadata:
@@ -280,6 +281,15 @@ class PlexAPI:
             return True
         except Exception as e:
             logger.error(f"Failed to update Plex section for path {path}: {e}")
+            return False
+
+    def empty_trash_section(self, section: LibrarySection) -> bool:
+        """Empty trash for a specific Plex library section"""
+        try:
+            section.emptyTrash()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to empty Plex trash for section {section}: {e}")
             return False
 
     def map_sections_with_paths(self) -> dict[LibrarySection, list[str]]:

@@ -47,8 +47,5 @@ def test_load_and_migrate_settings(tmp_path):
     assert settings_manager.settings.downloaders.real_debrid.enabled is False
     assert settings_manager.settings.downloaders.all_debrid.enabled is True
     assert settings_manager.settings.downloaders.all_debrid.api_key == "12345678"
-    assert (
-        settings_manager.settings.downloaders.proxy_url
-        == "https://no_proxy.com"
-    )
+    assert settings_manager.settings.downloaders.proxy_url == "https://no_proxy.com"
     assert settings_manager.settings.version == get_version()

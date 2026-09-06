@@ -71,6 +71,7 @@ async def prometheus_metrics() -> Response:
         media_type=prom.CONTENT_TYPE_LATEST,
     )
 
+
 class DownloaderUserInfo(BaseModel):
     """Normalized downloader user information response"""
 
@@ -476,7 +477,9 @@ async def get_stats() -> StatsResponse:
             ).all()
             for item_id, title, last_state, scraped_times in attention_rows:
                 state_value = (
-                    last_state.value if hasattr(last_state, "value") else str(last_state)
+                    last_state.value
+                    if hasattr(last_state, "value")
+                    else str(last_state)
                 )
                 needs_attention.append(
                     NeedsAttentionItem(

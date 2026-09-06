@@ -1508,8 +1508,7 @@ class MediaStream:
             # Playback has already begun, so the header has been served
             # for this file, but the scan happens on a new file handle
             # and is the first request to be made.
-            start > self.config.header_size
-            and self.recent_reads.last_read_end is None
+            start > self.config.header_size and self.recent_reads.last_read_end is None
         ):
             return "general_scan"
 

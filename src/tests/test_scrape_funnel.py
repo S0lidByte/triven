@@ -115,6 +115,4 @@ def test_parse_results_accounts_for_every_input_in_funnel():
     with settings_manager.override(languages={"required": []}):
         streams = parse_results(item, results, manual=False, funnel=funnel)
 
-    assert (
-        funnel.rtn_rejected + funnel.content_filtered + len(streams) == funnel.found
-    )
+    assert funnel.rtn_rejected + funnel.content_filtered + len(streams) == funnel.found

@@ -76,3 +76,16 @@ class PlexUpdater(BaseUpdater):
                     return self.api.update_section(section, path)
 
         return False
+
+    def empty_trash(self, path: str) -> bool:
+        """Empty trash for the Plex section matching the given path"""
+
+        assert self.api is not None, "Plex API is not initialized"
+
+        for section, section_paths in self.sections.items():
+            for section_path in section_paths:
+                sp_dir = section_path.rstrip("/") + "/"
+                if path == section_path or path.startswith(sp_dir):
+                    return self.api.empty_trash_section(section)
+
+        return False

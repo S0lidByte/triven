@@ -116,10 +116,11 @@ class EventManager:
         """Shut down all service thread pool executors cleanly."""
         with self.mutex:
             for service_executor in self._executors:
-                logger.debug(f"Shutting down executor for {service_executor.service_name}")
+                logger.debug(
+                    f"Shutting down executor for {service_executor.service_name}"
+                )
                 service_executor.executor.shutdown(wait=wait, cancel_futures=True)
             self._executors.clear()
-
 
     def _process_future(self, future_with_event: FutureWithEvent, service: Service):
         """
@@ -652,13 +653,14 @@ class EventManager:
                             if event.overrides:
                                 queued_event.overrides = event.overrides
                         else:
-                            logger.debug(f"Item ID {item_id} is already in the queue, skipping.")
+                            logger.debug(
+                                f"Item ID {item_id} is already in the queue, skipping."
+                            )
                         return False
 
             if self._id_in_running_events(item_id):
                 logger.debug(f"Item ID {item_id} is already running, skipping.")
                 return False
-
 
             for related_id in related_ids:
                 if self._id_in_queue(related_id) or self._id_in_running_events(

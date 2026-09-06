@@ -348,9 +348,7 @@ class Chunker:
             max_chunks=self.total_chunks_excluding_header_footer,
         )
 
-    def get_prefetch_uncached(
-        self, *, after_end: int, count: int
-    ) -> OrderedSet[Chunk]:
+    def get_prefetch_uncached(self, *, after_end: int, count: int) -> OrderedSet[Chunk]:
         """Return up to ``count`` uncached content chunks starting after ``after_end``."""
 
         if count <= 0:

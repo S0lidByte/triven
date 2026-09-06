@@ -31,9 +31,7 @@ async def test_get_vfs_stats_returns_representative_runtime_statistics():
     original = di[Program] if Program in di else None
     di[Program] = SimpleNamespace(
         services=SimpleNamespace(
-            filesystem=SimpleNamespace(
-                riven_vfs=SimpleNamespace(opener_stats=stats)
-            )
+            filesystem=SimpleNamespace(riven_vfs=SimpleNamespace(opener_stats=stats))
         )
     )
 
@@ -54,9 +52,7 @@ async def test_get_vfs_stats_returns_empty_statistics_when_no_files_opened():
     original = di[Program] if Program in di else None
     di[Program] = SimpleNamespace(
         services=SimpleNamespace(
-            filesystem=SimpleNamespace(
-                riven_vfs=SimpleNamespace(opener_stats={})
-            )
+            filesystem=SimpleNamespace(riven_vfs=SimpleNamespace(opener_stats={}))
         )
     )
 
@@ -83,9 +79,7 @@ def test_vfs_stats_endpoint_requires_auth_and_returns_representative_stats(
     original = di[Program] if Program in di else None
     di[Program] = SimpleNamespace(
         services=SimpleNamespace(
-            filesystem=SimpleNamespace(
-                riven_vfs=SimpleNamespace(opener_stats=stats)
-            )
+            filesystem=SimpleNamespace(riven_vfs=SimpleNamespace(opener_stats=stats))
         )
     )
     try:

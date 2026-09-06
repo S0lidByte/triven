@@ -63,7 +63,9 @@ class _HarnessVFSDatabase:
     def __init__(self, *_: Any, **__: Any) -> None:
         self.entry: _Entry | None = None
 
-    def get_entry_by_original_filename(self, *, original_filename: str) -> _Entry | None:
+    def get_entry_by_original_filename(
+        self, *, original_filename: str
+    ) -> _Entry | None:
         return self.entry if original_filename == _FILENAME else None
 
 
@@ -204,7 +206,10 @@ def _install_file(vfs: RivenVFS) -> str:
 
 def _mount_is_present(path: Path) -> bool:
     try:
-        return any(f" {path} " in line for line in Path("/proc/mounts").read_text().splitlines())
+        return any(
+            f" {path} " in line
+            for line in Path("/proc/mounts").read_text().splitlines()
+        )
     except OSError:
         return False
 
@@ -232,9 +237,17 @@ def test_kernel_read_uses_one_mount_scoped_trio_pool(tmp_path: Path) -> None:
     with _range_server() as url:
         _LocalDebridUrl.url = url
         with (
-            patch("program.services.filesystem.vfs.rivenvfs.VFSDatabase", _HarnessVFSDatabase),
-            patch("program.services.filesystem.vfs.rivenvfs.DebridCDNUrl", _LocalDebridUrl),
-            patch("program.services.streaming.http_pool.TrioStreamingHttpPool", _RecordingPool),
+            patch(
+                "program.services.filesystem.vfs.rivenvfs.VFSDatabase",
+                _HarnessVFSDatabase,
+            ),
+            patch(
+                "program.services.filesystem.vfs.rivenvfs.DebridCDNUrl", _LocalDebridUrl
+            ),
+            patch(
+                "program.services.streaming.http_pool.TrioStreamingHttpPool",
+                _RecordingPool,
+            ),
             patch.object(RivenVFS, "sync", return_value=None),
         ):
             # Keep cache settings local to the disposable mount.
@@ -251,9 +264,14 @@ def test_kernel_read_uses_one_mount_scoped_trio_pool(tmp_path: Path) -> None:
                 vfs.vfs_db.entry = _Entry(url)
                 relative_path = _install_file(vfs)
 
-                _wait_for(lambda: vfs.mounted and _mount_is_present(mountpoint), "FUSE mount did not become visible")
+                _wait_for(
+                    lambda: vfs.mounted and _mount_is_present(mountpoint),
+                    "FUSE mount did not become visible",
+                )
                 target = mountpoint / relative_path
-                _wait_for(target.exists, "kernel did not resolve the real VFS test file")
+                _wait_for(
+                    target.exists, "kernel did not resolve the real VFS test file"
+                )
 
                 stat_result = target.stat()
                 assert stat_result.st_size == len(_PAYLOAD)
@@ -274,7 +292,9 @@ def test_kernel_read_uses_one_mount_scoped_trio_pool(tmp_path: Path) -> None:
                 filesystem.cache_hot_dir = original_hot_dir
                 vfs.close()
 
-    _wait_for(lambda: not _mount_is_present(mountpoint), "FUSE mount remained after close")
+    _wait_for(
+        lambda: not _mount_is_present(mountpoint), "FUSE mount remained after close"
+    )
     assert vfs.http_pool is None
     assert len(_RecordingPool.instances) == 1
     assert _RecordingPool.instances[0]._closed

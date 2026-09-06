@@ -65,9 +65,7 @@ def test_proxy_tmdb_get_forwards_path_query_and_auth(monkeypatch):
     app = FastAPI()
     app.include_router(tmdb_router.router)
 
-    response = TestClient(app).get(
-        "/tmdb/3/trending/movie/day?page=2&language=en-US"
-    )
+    response = TestClient(app).get("/tmdb/3/trending/movie/day?page=2&language=en-US")
 
     assert response.status_code == 200
     assert response.json() == {"results": [{"id": 1}]}

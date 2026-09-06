@@ -24,7 +24,9 @@ MATTE_TITLE = "The.Movie.2024.1080p.BluRay.matte.x264-GROUP"
 INFOHASH = "0" * 40
 
 
-def _rank(raw_title: str, ranking: dict, *, correct_title: str = "", remove_trash: bool = True):
+def _rank(
+    raw_title: str, ranking: dict, *, correct_title: str = "", remove_trash: bool = True
+):
     validate_ranking_payload_patterns(ranking)
     settings_model = RTNSettingsModel(**ranking)
     normalize_rtn_language_settings(settings_model)

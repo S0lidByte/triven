@@ -162,7 +162,9 @@ class DebridFile(BaseModel):
             and effective_runtime > 0
         ):
             if filetype == "movie":
-                min_bitrate = settings_manager.settings.downloaders.movie_min_avg_bitrate
+                min_bitrate = (
+                    settings_manager.settings.downloaders.movie_min_avg_bitrate
+                )
             elif filetype in ["show", "season", "episode"]:
                 min_bitrate = (
                     settings_manager.settings.downloaders.episode_min_avg_bitrate

@@ -200,7 +200,9 @@ def _probe_all_debrid() -> ConnectionTestResponse:
         return _fail(started, "Connection failed")
 
     if response.status_code in (401, 403):
-        return _fail(started, "Unauthorized" if response.status_code == 401 else "Forbidden")
+        return _fail(
+            started, "Unauthorized" if response.status_code == 401 else "Forbidden"
+        )
     if response.status_code >= 400:
         return _fail(started, f"HTTP {response.status_code}")
     return _ok(started, "Connected to AllDebrid")
@@ -229,7 +231,9 @@ def _probe_debrid_link() -> ConnectionTestResponse:
         return _fail(started, "Connection failed")
 
     if response.status_code in (401, 403):
-        return _fail(started, "Unauthorized" if response.status_code == 401 else "Forbidden")
+        return _fail(
+            started, "Unauthorized" if response.status_code == 401 else "Forbidden"
+        )
     if response.status_code >= 400:
         return _fail(started, f"HTTP {response.status_code}")
     return _ok(started, "Connected to Debrid-Link")
