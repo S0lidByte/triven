@@ -29,6 +29,13 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=2000"]
 
+  # Match the CI lint gate and autofix staged import ordering before commit.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+
   # Re-lock when pyproject.toml (or the lock itself) is staged so CI --locked never drifts.
   - repo: local
     hooks:
