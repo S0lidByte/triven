@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.31.0](https://github.com/S0lidByte/CineFlow/compare/v1.30.0...v1.31.0) (2026-09-06)
+
+
+### Features
+
+* **items:** active-stream blacklisting lifecycle, VFS teardown & Plex trash cleanup ([748e88b](https://github.com/S0lidByte/CineFlow/commit/748e88b124e787d58d8a1cc5b6cd0249deac7f94))
+
+
+### Bug Fixes
+
+* **backend:** resolve release pyright checks ([2862850](https://github.com/S0lidByte/CineFlow/commit/2862850d10863ec76b4dab0ba42ef9c36e5ada58))
+* **ci:** prevent verify regressions ([c32cad6](https://github.com/S0lidByte/CineFlow/commit/c32cad65634895e380008d729f67085890b254de))
+
 ## [1.30.0](https://github.com/S0lidByte/CineFlow/compare/v1.29.27...v1.30.0) (2026-09-06)
 
 
