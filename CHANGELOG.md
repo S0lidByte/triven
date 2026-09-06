@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.30.0](https://github.com/S0lidByte/CineFlow/compare/v1.29.27...v1.30.0) (2026-09-06)
+
+
+### Features
+
+* **subtitles:** add anonymous and authenticated login unit tests for opensubtitles ([c4693b4](https://github.com/S0lidByte/CineFlow/commit/c4693b482de92d2e943919da99bfc70e5102c566))
+
+
+### Bug Fixes
+
+* **backend:** resolve pyright type narrowing and optional response findings ([ee8c278](https://github.com/S0lidByte/CineFlow/commit/ee8c27839423c3f1b38ccda5779da953b6d49aad))
+* **scrapers:** enforce set-intersection language predicate and harden multi retry ([87a1865](https://github.com/S0lidByte/CineFlow/commit/87a18653d2d35711189e9036325931c17b717455))
+
 ## [1.29.27](https://github.com/S0lidByte/CineFlow/compare/v1.29.26...v1.29.27) (2026-09-02)
 
 
