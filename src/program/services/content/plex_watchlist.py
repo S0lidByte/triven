@@ -65,7 +65,7 @@ class PlexWatchlist(Runner[PlexWatchlistModel]):
 
                     self.api.rss_enabled = True
                 except HTTPError as e:
-                    if e.response.status_code == 404:
+                    if e.response is not None and e.response.status_code == 404:
                         logger.warning(
                             f"Plex RSS URL {sanitize_url_for_logs(rss_url)} is Not Found. "
                             "Please check your RSS URL in settings."
@@ -73,9 +73,12 @@ class PlexWatchlist(Runner[PlexWatchlistModel]):
 
                         return False
                     else:
+                        status_code = (
+                            e.response.status_code if e.response is not None else "N/A"
+                        )
                         logger.warning(
                             f"Plex RSS URL {sanitize_url_for_logs(rss_url)} is not reachable "
-                            f"(HTTP status code: {e.response.status_code})."
+                            f"(HTTP status code: {status_code})."
                         )
 
                         return False

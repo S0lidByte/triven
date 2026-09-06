@@ -712,7 +712,7 @@ class SmartSession:
 
         if stream:
             # Do not pre-read body; let .content or .iter_content consume it on demand
-            r._content = None  # requests will read from r.raw when content accessed
+            r._content = None  # type: ignore[attr-defined] # pyright: ignore[reportPrivateUsage] # requests will read from r.raw when content accessed
 
             class _RawAdapter:
                 def __init__(self, resp: httpx.Response):
@@ -760,7 +760,7 @@ class SmartSession:
             # Break all references to httpx internals so GC can free decoder buffers
             del httpx_response
 
-            r._content = content
+            r._content = content  # type: ignore[attr-defined] # pyright: ignore[reportPrivateUsage]
 
             try:
                 r.headers.update(headers)

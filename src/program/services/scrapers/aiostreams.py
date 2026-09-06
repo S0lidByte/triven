@@ -137,7 +137,7 @@ class AIOStreams(ScraperService[AIOStreamsConfig]):
         try:
             return self.scrape(item)
         except HTTPError as http_err:
-            if http_err.response.status_code == 429:
+            if http_err.response is not None and http_err.response.status_code == 429:
                 from program.utils.exceptions import RateLimitError
 
                 retry_after = http_err.response.headers.get("Retry-After")

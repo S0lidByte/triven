@@ -186,7 +186,13 @@ def resolve_actor_context(
             detail="Actor context requires the BFF service credential",
         )
 
-    if any(value is None for value in actor_values):
+    if (
+        actor_id is None
+        or actor_roles is None
+        or actor_client is None
+        or actor_timestamp is None
+        or actor_signature is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Incomplete actor context",

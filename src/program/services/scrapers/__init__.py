@@ -65,7 +65,7 @@ class Scraping(Runner[ScraperModel, ScraperService[Observable]]):
 
         for service in self.services.values():
             if service.enabled and not service.initialized:
-                service._initialize()
+                service._initialize()  # pyright: ignore[reportPrivateUsage]
 
         self.initialized_services = [
             service for service in self.services.values() if service.initialized

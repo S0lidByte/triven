@@ -272,9 +272,7 @@ def _should_retry_as_untagged_english(
     allow_english = getattr(
         settings.options,
         "allow_english_in_languages",
-        getattr(settings.options, "get", lambda k, d=True: d)(
-            "allow_english_in_languages", True
-        ),
+        True if getattr(settings.options, "get", None) is None else settings.options.get("allow_english_in_languages", True),  # type: ignore[union-attr]
     )
     if not allow_english:
         return False
