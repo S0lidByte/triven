@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.1](https://github.com/S0lidByte/CineFlow/compare/v1.31.0...v1.31.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **pipeline:** classify transient debrid errors and fix child media item stream ownership ([9ca86cd](https://github.com/S0lidByte/CineFlow/commit/9ca86cd54e3a58217c7f713e2f05e0add7e56dea))
+
 ## [1.31.0](https://github.com/S0lidByte/CineFlow/compare/v1.30.0...v1.31.0) (2026-09-06)
 
 
