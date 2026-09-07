@@ -35,7 +35,12 @@ from program.services.downloaders.models import (
     TorrentContainer,
     TorrentInfo,
 )
-from program.services.downloaders.shared import DownloaderBase
+from program.services.downloaders.shared import (
+    DebridInfringingError,
+    DebridPermanentError,
+    DebridVpnBlockedError,
+    DownloaderBase,
+)
 from program.services.scrapers import Scraping
 from program.services.scrapers.funnel import ScrapeFunnelStats, remember_funnel_summary
 from program.services.scrapers.shared import (
@@ -358,6 +363,7 @@ async def resolve_torrent_container(
     from program.services.downloaders.models import InvalidDebridFileException
 
     service_errors: list[tuple[str, str]] = []
+    permanent_errors: list[DebridPermanentError] = []
 
     overrides = {}
     if min_filesize_override is not None:
@@ -388,6 +394,12 @@ async def resolve_torrent_container(
                 if service_container and service_container.files:
                     return service_container, None, service
 
+            except DebridPermanentError as e:
+                permanent_errors.append(e)
+                logger.info(
+                    f"Permanent availability rejection from {service_key} for {infohash}: {e}"
+                )
+                continue
             except InvalidDebridFileException as e:
                 service_errors.append(
                     (service_name, f"Invalid debrid file from {service_key}: {e}")
@@ -484,6 +496,11 @@ async def resolve_torrent_container(
                     logger.error(
                         f"Circuit breaker OPEN while resolving magnet {infohash} on {service_key}: {e}"
                     )
+                except DebridPermanentError as e:
+                    permanent_errors.append(e)
+                    logger.info(
+                        f"Permanent resolution rejection from {service_key} for {infohash}: {e}"
+                    )
                 except Exception as e:
                     logger.error(f"Magnet resolution error on {service_key}: {e}")
                     service_errors.append(
@@ -492,6 +509,16 @@ async def resolve_torrent_container(
                             f"Unable to resolve magnet on {service_key}: {str(e)}",
                         )
                     )
+
+    if permanent_errors:
+        for error_type in (DebridInfringingError, DebridVpnBlockedError):
+            if prioritized_error := next(
+                (error for error in permanent_errors if isinstance(error, error_type)),
+                None,
+            ):
+                raise prioritized_error
+
+        raise permanent_errors[0]
 
     if service_errors:
         sorted_errors = ", ".join([f"{svc}: {msg}" for svc, msg in service_errors])
@@ -921,13 +948,29 @@ async def start_manual_session(
         item_type: ProcessedItemType = (
             item.type if item.type != "mediaitem" else "movie"
         )
-        container, error, used_service = await resolve_torrent_container(
-            info_hash,
-            downloader,
-            item_type=item_type,
-            min_filesize_override=min_filesize_override,
-            max_filesize_override=max_filesize_override,
-        )
+        try:
+            container, error, used_service = await resolve_torrent_container(
+                info_hash,
+                downloader,
+                item_type=item_type,
+                min_filesize_override=min_filesize_override,
+                max_filesize_override=max_filesize_override,
+            )
+        except DebridInfringingError as e:
+            raise HTTPException(
+                status_code=451,
+                detail="Torrent resolution was blocked by the provider due to content restrictions.",
+            ) from e
+        except DebridVpnBlockedError as e:
+            raise HTTPException(
+                status_code=403,
+                detail="Torrent resolution was rejected by the provider because this server or network is not permitted to use this feature.",
+            ) from e
+        except DebridPermanentError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Torrent resolution rejected by provider: {e}",
+            ) from e
 
         if not container or not container.cached:
             raise HTTPException(
@@ -970,6 +1013,30 @@ async def start_manual_session(
                 torrent_info=torrent_info,
                 containers=container,
             )
+        except DebridInfringingError as e:
+            background_tasks.add_task(
+                scraping_session_manager.abort_session, session_obj.id
+            )
+            raise HTTPException(
+                status_code=451,
+                detail="Torrent resolution was blocked by the provider due to content restrictions.",
+            ) from e
+        except DebridVpnBlockedError as e:
+            background_tasks.add_task(
+                scraping_session_manager.abort_session, session_obj.id
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Torrent resolution was rejected by the provider because this server or network is not permitted to use this feature.",
+            ) from e
+        except DebridPermanentError as e:
+            background_tasks.add_task(
+                scraping_session_manager.abort_session, session_obj.id
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Torrent resolution rejected by provider: {e}",
+            ) from e
         except Exception as e:
             background_tasks.add_task(
                 scraping_session_manager.abort_session, session_obj.id

@@ -15,6 +15,18 @@ from program.services.downloaders.models import (
 from program.settings import settings_manager
 
 
+class DebridPermanentError(Exception):
+    """Base exception for non-retryable debrid provider errors."""
+
+
+class DebridInfringingError(DebridPermanentError):
+    """Torrent marked as infringing/copyright-blocked (e.g. RD HTTP 451 / INFRINGING_FILE)."""
+
+
+class DebridVpnBlockedError(DebridPermanentError):
+    """Debrid access blocked by provider VPN policy (e.g. AllDebrid MAGNET_NO_SERVER / NO_SERVER)."""
+
+
 class DownloaderBase(ABC):
     """The abstract base class for all Downloader implementations."""
 

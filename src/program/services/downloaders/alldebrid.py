@@ -18,7 +18,7 @@ from program.services.downloaders.models import (
 from program.settings import settings_manager
 from program.utils.request import CircuitBreakerOpen, SmartResponse, SmartSession
 
-from .shared import DownloaderBase, premium_days_left
+from .shared import DebridVpnBlockedError, DownloaderBase, premium_days_left
 
 
 class AllDebridFile(BaseModel):
@@ -327,6 +327,14 @@ class AllDebridDownloader(DownloaderBase):
                     pass
 
             raise
+        except DebridVpnBlockedError:
+            if torrent_id:
+                try:
+                    self.delete_torrent(torrent_id)
+                except Exception:
+                    pass
+
+            raise
         except AllDebridError as e:
             logger.warning(f"Availability check failed [{infohash}]: {e}")
 
@@ -504,7 +512,7 @@ class AllDebridDownloader(DownloaderBase):
         self._maybe_backoff(response)
 
         if not response.ok:
-            raise AllDebridError(self._handle_error(response))
+            raise self._availability_error(response)
 
         # AllDebrid API returns {status: "success", data: {magnets: [{id: ...}]}}
         try:
@@ -517,7 +525,7 @@ class AllDebridDownloader(DownloaderBase):
             raise AllDebridError(f"Invalid response format from AllDebrid: {e}")
 
         if isinstance(data, AllDebridErrorResponse):
-            raise AllDebridError(data.error.message)
+            raise self._error_from_detail(data.error)
 
         magnets = data.data.magnets
 
@@ -532,6 +540,32 @@ class AllDebridDownloader(DownloaderBase):
             raise AllDebridError("No magnet ID in response")
 
         return int(magnet_id)
+
+    def _availability_error(
+        self, response: SmartResponse
+    ) -> AllDebridError | DebridVpnBlockedError:
+        """Classify a failed availability response before surfacing it upstream."""
+
+        try:
+            data = (
+                AllDebridResponse[None].model_validate({"data": response.json()}).data
+            )
+            if isinstance(data, AllDebridErrorResponse):
+                return self._error_from_detail(data.error)
+        except (ValueError, ValidationError):
+            pass
+
+        return AllDebridError(self._handle_error(response))
+
+    def _error_from_detail(
+        self, error: AllDebridErrorDetail
+    ) -> AllDebridError | DebridVpnBlockedError:
+        """Map provider error detail codes to typed availability errors."""
+
+        if error.code.upper() in {"MAGNET_NO_SERVER", "NO_SERVER"}:
+            return DebridVpnBlockedError(error.message)
+
+        return AllDebridError(error.message)
 
     def select_files(self, torrent_id: int | str, file_ids: list[int]) -> None:
         """

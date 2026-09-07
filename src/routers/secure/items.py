@@ -1167,8 +1167,20 @@ async def blacklist_stream(
                 detail="Item not found",
             )
 
+        owner = MediaItem.get_stream_owner(item, stream_id=stream_id)
+        if not owner:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Stream not found",
+            )
+
         stream = next(
-            (stream for stream in item.streams if stream.id == stream_id), None
+            (
+                candidate
+                for candidate in (*owner.streams, *owner.blacklisted_streams)
+                if candidate.id == stream_id
+            ),
+            None,
         )
 
         if not stream:
@@ -1180,18 +1192,8 @@ async def blacklist_stream(
         is_active = _is_active_stream(item, stream)
 
         if not is_active:
-            # Metadata-only blacklist for inactive streams
-            def inactive_mutation(i: MediaItem, _: Session):
-                i.blacklist_stream(stream)
-
-            apply_item_mutation(
-                di[Program],
-                session,
-                item,
-                inactive_mutation,
-                bubble_parents=True,
-            )
-
+            # Metadata-only blacklist is applied to the stream owner.
+            MediaItem.blacklist_stream(owner, stream)
             session.commit()
 
             return MessageResponse(
@@ -1205,28 +1207,30 @@ async def blacklist_stream(
         if media_entry and getattr(media_entry, "path", None):
             refresh_paths.append(str(media_entry.path))
 
-        # Step 2: Persist authoritative database mutation
-        def active_mutation(i: MediaItem, _: Session):
-            i.blacklist_stream(stream)
-            i.active_stream = None
-            i.scraped_at = None
-            i.scraped_times = 0
-            i.failed_attempts = 0
-            i.store_state(States.Indexed)
+        # Step 2: Mutate the stream owner and reset the active playback consumer.
+        program = di[Program]
+
+        def reset_consumer_after_blacklist(
+            consumer: MediaItem, _session: Session
+        ) -> None:
+            MediaItem.blacklist_stream(owner, stream)
+            consumer.active_stream = None
+            consumer.scraped_at = None
+            consumer.scraped_times = 0
+            consumer.failed_attempts = 0
+            consumer.store_state(States.Indexed)
 
         apply_item_mutation(
-            di[Program],
+            program,
             session,
             item,
-            active_mutation,
-            bubble_parents=True,
+            reset_consumer_after_blacklist,
+            bubble_parents=False,
         )
-
         session.commit()
 
         # Step 3: VFS teardown BEFORE clearing filesystem_entries / subtitles
         try:
-            program = di[Program]
             riven_vfs = getattr(program, "riven_vfs", None) or getattr(
                 getattr(getattr(program, "services", None), "filesystem", None),
                 "riven_vfs",
@@ -1319,21 +1323,26 @@ async def unblacklist_stream(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
             )
 
-        stream = next(
-            (stream for stream in item.blacklisted_streams if stream.id == stream_id),
-            None,
+        owner = MediaItem.get_stream_owner(item, stream_id=stream_id)
+        stream = (
+            next(
+                (
+                    candidate
+                    for candidate in owner.blacklisted_streams
+                    if candidate.id == stream_id
+                ),
+                None,
+            )
+            if owner
+            else None
         )
 
-        if not stream:
+        if not stream or not owner:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Stream not found"
             )
 
-        def mutation(i: MediaItem, _: Session):
-            i.unblacklist_stream(stream)
-
-        apply_item_mutation(di[Program], db, item, mutation, bubble_parents=True)
-
+        MediaItem.unblacklist_stream(owner, stream)
         db.commit()
 
         return MessageResponse(

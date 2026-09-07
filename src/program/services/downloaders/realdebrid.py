@@ -29,7 +29,11 @@ from program.services.streaming.exceptions.debrid_service_exception import (
 from program.settings import settings_manager
 from program.utils.request import CircuitBreakerOpen, SmartResponse, SmartSession
 
-from .shared import DownloaderBase, premium_days_left
+from .shared import (
+    DebridInfringingError,
+    DownloaderBase,
+    premium_days_left,
+)
 
 
 class RealDebridErrorCode(IntEnum):
@@ -351,6 +355,14 @@ class RealDebridDownloader(DownloaderBase):
                 "api.real-debrid.com",
                 retry_after_seconds=e.retry_after_seconds,
             ) from e
+        except DebridInfringingError:
+            if torrent_id:
+                try:
+                    self.delete_torrent(torrent_id)
+                except Exception:
+                    pass
+
+            raise
         except RealDebridError as e:
             # add_torrent/select_files/delete_torrent surface HTTP error context via _handle_error
             logger.warning(f"Availability check failed [{infohash}]: {e}")
@@ -515,6 +527,10 @@ class RealDebridDownloader(DownloaderBase):
         self._maybe_backoff(response)
 
         if not response.ok:
+            if response.status_code == 451 or self._response_has_error_code(
+                response, RealDebridErrorCode.INFRINGING_FILE
+            ):
+                raise DebridInfringingError(self._handle_error(response))
             raise RealDebridError(self._handle_error(response))
 
         class RealDebridAddMagnetResponse(BaseModel):
@@ -687,6 +703,21 @@ class RealDebridDownloader(DownloaderBase):
             return "[502] Bad Gateway"
 
         return response.reason or f"HTTP {code}"
+
+    def _response_has_error_code(
+        self,
+        response: SmartResponse,
+        error_code: RealDebridErrorCode,
+    ) -> bool:
+        """Return whether a provider error response contains the given error code."""
+
+        try:
+            return (
+                RealDebridErrorResponse.model_validate(response.json()).error_code
+                == error_code
+            )
+        except Exception:
+            return False
 
     def get_downloads(self) -> list[RealDebridDownload]:
         """Get all downloads from Real-Debrid"""
